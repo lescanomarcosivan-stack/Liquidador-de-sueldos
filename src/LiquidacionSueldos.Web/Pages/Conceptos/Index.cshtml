@@ -1,0 +1,60 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Conceptos.IndexModel
+@{ ViewData["Title"] = "Conceptos"; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Conceptos adicionales</h1>
+        <p>Haberes y descuentos configurables que se aplican en cada liquidación. Si el valor es 0 el concepto no aparece en el recibo, salvo que lo cargues manualmente para un empleado.</p>
+    </div>
+    <partial name="_Alert" model="(Model.Ok, Model.Error)" />
+
+    <div class="panel">
+        <table class="table-simple">
+            <thead><tr><th>Nombre</th><th>Tipo</th><th>Remunerativo</th><th>Cálculo</th><th class="money">Valor</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var c in Model.Lista)
+            {
+                <tr>
+                    <td>@c.Nombre</td>
+                    <td><span class="badge @(c.Tipo == "haber" ? "" : "warn")">@(c.Tipo == "haber" ? "Haber" : "Descuento")</span></td>
+                    <td>@(c.Tipo == "haber" ? (c.Remunerativo ? "Sí" : "No") : "—")</td>
+                    <td>@(c.Calculo switch { "pctBasico" => "% del básico", "pctHaberes" => "% de haberes", _ => "Importe fijo" })</td>
+                    <td class="money">@(c.Calculo == "fijo" ? Fmt.Money(c.Valor) : Fmt.Pct(c.Valor))</td>
+                    <td style="text-align:right;white-space:nowrap;">
+                        <a class="btn-small" asp-page="Index" asp-route-id="@c.Id">Editar</a>
+                        <form method="post" asp-page-handler="Eliminar" asp-route-id="@c.Id" class="inline-form">
+                            <button class="btn-small btn-danger-outline" data-confirm="¿Eliminar el concepto «@c.Nombre»?">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Lista.Count == 0) { <tr><td colspan="6" class="hint">No hay conceptos.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="panel" style="margin-top:18px;">
+        <h3>@(Model.Input.Id.HasValue ? "Editar concepto" : "Nuevo concepto")</h3>
+        <form method="post">
+            <input type="hidden" asp-for="Input.Id" />
+            <div class="form-grid">
+                <div class="field wide"><label>Nombre *</label><input asp-for="Input.Nombre" required maxlength="150" /></div>
+                <div class="field"><label>Tipo</label>
+                    <select asp-for="Input.Tipo"><option value="haber">Haber</option><option value="descuento">Descuento</option></select></div>
+                <div class="field"><label>Remunerativo (solo haberes)</label>
+                    <select asp-for="Input.Remunerativo"><option value="true">Sí</option><option value="false">No</option></select></div>
+                <div class="field"><label>Forma de cálculo</label>
+                    <select asp-for="Input.Calculo">
+                        <option value="fijo">Importe fijo ($)</option>
+                        <option value="pctBasico">% del básico</option>
+                        <option value="pctHaberes">% de haberes (básico + antigüedad + presentismo + HE)</option>
+                    </select></div>
+                <div class="field"><label>Valor ($ o %)</label><input asp-for="Input.Valor" type="number" step="any" min="0" /></div>
+            </div>
+            <div class="page-actions" style="margin-top:14px;">
+                <button class="btn-primary" type="submit">@(Model.Input.Id.HasValue ? "Guardar cambios" : "Crear concepto")</button>
+                @if (Model.Input.Id.HasValue) { <a class="btn-secondary" asp-page="Index">Cancelar</a> }
+            </div>
+        </form>
+    </div>
+</section>

@@ -1,0 +1,3 @@
+@model (string? Ok, string? Error)
+@if (!string.IsNullOrEmpty(Model.Ok)) { <div class="alert ok">@Model.Ok</div> }
+@if (!string.IsNullOrEmpty(Model.Error)) { <div class="alert error">@Model.Error</div> }

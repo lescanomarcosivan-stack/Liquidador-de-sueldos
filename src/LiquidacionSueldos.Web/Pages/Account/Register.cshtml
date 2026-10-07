@@ -1,0 +1,22 @@
+@page
+@model RegisterModel
+@{ Layout = "_PublicLayout"; ViewData["Title"] = "Registrar estudio"; }
+<div class="login-box" style="width:420px;">
+    <h2>Registrar mi estudio</h2>
+    <p class="hint">Se crea tu estudio contable y tu usuario Administrador. Después podrás agregar más usuarios.</p>
+    @if (!ModelState.IsValid) { <div class="alert error">@Html.ValidationSummary(true)@foreach (var e in ModelState.Values.SelectMany(v => v.Errors)) { <div>@e.ErrorMessage</div> }</div> }
+    <form method="post">
+        <label>Nombre del estudio</label>
+        <input asp-for="Input.Estudio" required maxlength="150" />
+        <label>Tu nombre y apellido</label>
+        <input asp-for="Input.Nombre" required maxlength="150" />
+        <label>Email</label>
+        <input asp-for="Input.Email" type="email" required autocomplete="username" />
+        <label>Contraseña (mínimo 8 caracteres)</label>
+        <input asp-for="Input.Password" type="password" required autocomplete="new-password" />
+        <label>Repetir contraseña</label>
+        <input asp-for="Input.Confirmar" type="password" required autocomplete="new-password" />
+        <button type="submit" class="btn-primary" style="width:100%;margin-top:16px;">Crear estudio</button>
+    </form>
+    <p class="hint" style="margin-top:14px;"><a asp-page="Login">Ya tengo cuenta</a></p>
+</div>

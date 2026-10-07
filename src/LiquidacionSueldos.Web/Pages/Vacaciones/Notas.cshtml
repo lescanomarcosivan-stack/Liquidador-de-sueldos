@@ -1,0 +1,123 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Vacaciones.NotasModel
+@{
+    ViewData["Title"] = "Notas";
+    ViewData["BodyClass"] = "print-nota";
+    var i = Model.Input; var e = Model.Empleado; var emp = Model.Empresa;
+    var hoy = Fmt.FechaLarga(Fmt.HoyAr());
+}
+@section Head {
+    <style media="print">@@page{size:A4 portrait;margin:14mm}</style>
+}
+<section class="view active">
+    <div class="view-head">
+        <h1>Notas y notificaciones</h1>
+        <p>Notificación de vacaciones o de suspensión, lista para imprimir.</p>
+    </div>
+    <div class="no-print">
+        <partial name="_Tabs" />
+        <partial name="_Alert" model="(Model.Ok, Model.Error)" />
+
+        <form method="post" class="panel">
+            <div class="form-grid">
+                <div class="field"><label>Tipo de nota</label>
+                    <select asp-for="Input.Tipo" onchange="this.form.submit()">
+                        <option value="vacaciones">Notificación de vacaciones</option>
+                        <option value="suspension">Notificación de suspensión</option>
+                    </select></div>
+                <div class="field wide"><label>Empleado</label>
+                    <select asp-for="Input.EmpleadoId" onchange="this.form.submit()">
+                        @foreach (var x in Model.Empleados) { <option value="@x.Id">@x.NombreCompleto · Legajo @x.Legajo</option> }
+                    </select></div>
+            </div>
+            @if (i.Tipo == "vacaciones")
+            {
+                <div class="form-grid" style="margin-top:12px;">
+                    <div class="field"><label>Período de licencia</label><input asp-for="Input.Periodo" type="month" /></div>
+                    <div class="field"><label>Fecha de inicio</label><input asp-for="Input.Inicio" type="date" /></div>
+                    <div class="field"><label>Días otorgados</label><input asp-for="Input.Dias" type="number" min="0" max="60" /></div>
+                    <div class="field full"><label>Observaciones (opcional)</label><textarea asp-for="Input.Obs" rows="2" maxlength="1000"></textarea></div>
+                </div>
+            }
+            else
+            {
+                <div class="form-grid" style="margin-top:12px;">
+                    <div class="field"><label>Fecha desde</label><input asp-for="Input.Desde" type="date" /></div>
+                    <div class="field"><label>Fecha hasta</label><input asp-for="Input.Hasta" type="date" /></div>
+                    <div class="field"><label>Artículo / norma (opcional)</label><input asp-for="Input.Articulo" maxlength="200" placeholder="Ej: Art. 220 LCT" /></div>
+                    <div class="field full"><label>Motivo de la suspensión</label><textarea asp-for="Input.Motivo" rows="2" maxlength="1000"></textarea></div>
+                </div>
+            }
+            <div class="page-actions" style="margin-top:14px;">
+                <button class="btn-secondary" type="submit">Actualizar vista previa</button>
+                <button class="btn-secondary" type="submit" asp-page-handler="Guardar">Guardar en historial</button>
+                <button class="btn-primary" type="button" data-print>🖨 Imprimir nota</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="nota-preview-wrap" style="margin-top:16px;">
+    @if (e == null || emp == null)
+    {
+        <div class="nota-empty panel"><strong>No hay empleados cargados</strong> Primero cargá empleados desde «Base de empleados».</div>
+    }
+    else
+    {
+        <div class="nota-page">
+            <div class="nota-membrete">
+                @if (!string.IsNullOrEmpty(emp.LogoDataUrl)) { <img class="nota-logo" src="@emp.LogoDataUrl" alt="Logo" /> }
+                <div><strong>@(string.IsNullOrWhiteSpace(emp.RazonSocial) ? "DATOS DEL EMPLEADOR" : emp.RazonSocial)</strong>
+                    <span>CUIT: @(string.IsNullOrWhiteSpace(emp.Cuit) ? "—" : emp.Cuit)</span>
+                    <span>@(string.IsNullOrWhiteSpace(emp.Domicilio) ? "Domicilio no informado" : emp.Domicilio)</span></div>
+            </div>
+            <div class="nota-lugar-fecha">@(string.IsNullOrWhiteSpace(emp.Lugar) ? "—" : emp.Lugar), @hoy</div>
+            @if (i.Tipo == "vacaciones")
+            {
+                <div class="nota-titulo">Notificación de otorgamiento de vacaciones</div>
+                <div class="nota-cuerpo">
+                    <p>Por medio de la presente, se notifica a <strong>@e.NombreCompleto</strong> (Legajo N.º @(string.IsNullOrWhiteSpace(e.Legajo) ? "—" : e.Legajo), DNI @(string.IsNullOrWhiteSpace(e.Dni) ? "—" : e.Dni)) que se le otorgará el período de licencia anual por vacaciones correspondiente al período <strong>@(i.Periodo ?? "—")</strong>, conforme a lo establecido en el Art. 150 y siguientes de la Ley de Contrato de Trabajo N.º 20.744.</p>
+                    <div class="nota-datos">
+                        <div><span>Fecha de inicio</span><strong>@Fmt.FechaLarga(i.Inicio)</strong></div>
+                        <div><span>Días otorgados</span><strong>@i.Dias días corridos</strong></div>
+                        <div><span>Fecha estimada de reintegro</span><strong>@Fmt.FechaLarga(Model.Fin)</strong></div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(i.Obs)) { <p>@i.Obs</p> }
+                    <p>Se deja constancia de que la presente notificación se realiza con la antelación no menor a cuarenta y cinco (45) días prevista por la normativa vigente, o según lo acordado entre las partes.</p>
+                </div>
+            }
+            else
+            {
+                <div class="nota-titulo">Notificación de suspensión</div>
+                <div class="nota-cuerpo">
+                    <p>Por medio de la presente, se notifica a <strong>@e.NombreCompleto</strong> (Legajo N.º @(string.IsNullOrWhiteSpace(e.Legajo) ? "—" : e.Legajo), DNI @(string.IsNullOrWhiteSpace(e.Dni) ? "—" : e.Dni)) que se dispone su suspensión en el trabajo@(string.IsNullOrWhiteSpace(i.Articulo) ? "" : " en los términos del " + i.Articulo), por el período que se detalla a continuación.</p>
+                    <div class="nota-datos">
+                        <div><span>Fecha desde</span><strong>@Fmt.FechaLarga(i.Desde)</strong></div>
+                        <div><span>Fecha hasta</span><strong>@Fmt.FechaLarga(i.Hasta)</strong></div>
+                    </div>
+                    <p><strong>Motivo:</strong> @(string.IsNullOrWhiteSpace(i.Motivo) ? "No especificado" : i.Motivo)</p>
+                    <p>Queda Ud. debidamente notificado, quedando expedito el plazo legal para efectuar los descargos que estime corresponder.</p>
+                </div>
+            }
+            <div class="nota-firmas"><div class="firma">Firma del empleador</div><div class="firma">Firma del trabajador · Notificado</div></div>
+        </div>
+    }
+    </div>
+
+    <div class="panel notas-table-wrap no-print" style="margin-top:18px;">
+        <h3>Historial de notas</h3>
+        <table class="table-simple">
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Empleado</th><th>Detalle</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var n in Model.Historial)
+            {
+                <tr>
+                    <td>@Fmt.Fecha(n.Fecha)</td><td>@(n.Tipo == "vacaciones" ? "Vacaciones" : "Suspensión")</td>
+                    <td>@n.Empleado?.NombreCompleto</td><td>@NotasModel.Resumen(n)</td>
+                    <td><form method="post" asp-page-handler="Eliminar" asp-route-id="@n.Id" class="inline-form"><button class="btn-small btn-danger-outline" data-confirm="¿Eliminar esta nota del historial?">Eliminar</button></form></td>
+                </tr>
+            }
+            @if (Model.Historial.Count == 0) { <tr><td colspan="5" class="hint">Todavía no se guardaron notas.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</section>

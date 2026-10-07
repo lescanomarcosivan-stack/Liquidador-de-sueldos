@@ -1,0 +1,77 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Liquidacion.DetalleModel
+@{
+    ViewData["Title"] = "Detalle de liquidación";
+    var e = Model.Linea!.Empleado!;
+    var c = Model.Calculo;
+}
+<section class="view active">
+    <div class="view-head">
+        <h1>@e.NombreCompleto</h1>
+        <p>@Fmt.PeriodoLargo(Model.Periodo) · @Model.Tipo @(Model.Cerrada ? "· cerrada" : "· borrador")</p>
+    </div>
+    <partial name="_Alert" model="(Model.Ok, Model.Error)" />
+
+    <div class="grid-2">
+        <div class="panel calc-lines">
+            <h3>Cálculo</h3>
+            <div class="calc-row"><span>Sueldo básico</span><strong>@Fmt.Money(c.Basico)</strong></div>
+            <div class="calc-row"><span>Antigüedad (@c.Anios años)</span><strong>@Fmt.Money(c.Antiguedad)</strong></div>
+            <div class="calc-row"><span>Presentismo</span><strong>@Fmt.Money(c.Presentismo)</strong></div>
+            <div class="calc-row"><span>Horas extra 50%</span><strong>@Fmt.Money(c.He50)</strong></div>
+            <div class="calc-row"><span>Horas extra 100%</span><strong>@Fmt.Money(c.He100)</strong></div>
+            @foreach (var r in c.ConceptoRows.Where(r => r.Tipo == "rem")) { <div class="calc-row sub"><span>@r.Nombre</span><strong>@Fmt.Money(r.Valor)</strong></div> }
+            <div class="calc-row"><span><strong>Total remunerativo</strong></span><strong>@Fmt.Money(c.Remunerativo)</strong></div>
+            @foreach (var r in c.ConceptoRows.Where(r => r.Tipo == "noRem")) { <div class="calc-row sub"><span>@r.Nombre</span><strong>@Fmt.Money(r.Valor)</strong></div> }
+            <div class="calc-row"><span>Total no remunerativo</span><strong>@Fmt.Money(c.NoRem)</strong></div>
+            <div class="calc-row neg"><span>Jubilación</span><strong>@Fmt.Money(c.Jubilacion)</strong></div>
+            <div class="calc-row neg"><span>Ley 19.032 (INSSJP)</span><strong>@Fmt.Money(c.Inssjp)</strong></div>
+            <div class="calc-row neg"><span>Obra social</span><strong>@Fmt.Money(c.ObraSocial)</strong></div>
+            <div class="calc-row neg"><span>Cuota sindical</span><strong>@Fmt.Money(c.Sindicato)</strong></div>
+            @foreach (var r in c.ConceptoRows.Where(r => r.Tipo == "desc")) { <div class="calc-row neg"><span>@r.Nombre</span><strong>@Fmt.Money(r.Valor)</strong></div> }
+            @if (c.Otros > 0) { <div class="calc-row neg"><span>Adelantos / otros descuentos</span><strong>@Fmt.Money(c.Otros)</strong></div> }
+            <div class="calc-row"><span><strong>Total descuentos</strong></span><strong>@Fmt.Money(c.Descuentos)</strong></div>
+            <div class="calc-row"><span><strong>Neto a pagar</strong></span><strong>@Fmt.Money(c.Neto)</strong></div>
+        </div>
+
+        <div>
+            <div class="panel calc-lines">
+                <h3>Costo laboral del empleador</h3>
+                <div class="calc-row"><span>Bruto total</span><strong>@Fmt.Money(Model.Costo.BrutoTotal)</strong></div>
+                <div class="calc-row sub"><span>Jubilación patronal</span><strong>@Fmt.Money(Model.Costo.ContribJub)</strong></div>
+                <div class="calc-row sub"><span>Obra social patronal</span><strong>@Fmt.Money(Model.Costo.ContribOS)</strong></div>
+                <div class="calc-row sub"><span>ART</span><strong>@Fmt.Money(Model.Costo.ContribArt)</strong></div>
+                <div class="calc-row sub"><span>Asignaciones familiares</span><strong>@Fmt.Money(Model.Costo.ContribAsig)</strong></div>
+                <div class="calc-row sub"><span>Sindical patronal</span><strong>@Fmt.Money(Model.Costo.ContribSind)</strong></div>
+                <div class="calc-row"><span>Contribuciones</span><strong>@Fmt.Money(Model.Costo.ContribTotal)</strong></div>
+                <div class="calc-row"><span><strong>Costo total</strong></span><strong>@Fmt.Money(Model.Costo.CostoTotal)</strong></div>
+            </div>
+
+            <div class="panel" style="margin-top:16px;">
+                <h3>Conceptos adicionales</h3>
+                <p class="hint">Dejá vacío para que se calcule automáticamente según la configuración del concepto. Un valor sobrescribe el importe de este empleado (0 lo quita del recibo).</p>
+                <form method="post">
+                    <input type="hidden" name="Periodo" value="@Model.Periodo" />
+                    <input type="hidden" name="Tipo" value="@Model.Tipo" />
+                    <input type="hidden" name="EmpleadoId" value="@Model.EmpleadoId" />
+                    @foreach (var k in Model.Conceptos)
+                    {
+                        var ovTxt = Model.Overrides.TryGetValue(k.Id, out var ov) ? Fmt.Input(ov) : "";
+                        <div class="field" style="margin-bottom:10px;">
+                            <label>@k.Nombre (@(k.Tipo == "haber" ? (k.Remunerativo ? "haber remunerativo" : "haber no remunerativo") : "descuento"))</label>
+                            <input name="ov_@k.Id" type="number" step="0.01" min="0" readonly="@Model.Cerrada"
+                                   value="@ovTxt" />
+                        </div>
+                    }
+                    @if (Model.Conceptos.Count == 0) { <p class="hint">No hay conceptos configurados.</p> }
+                    @if (!Model.Cerrada) { <button class="btn-primary" type="submit">Guardar conceptos</button> }
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-actions" style="margin-top:16px;">
+        <a class="btn-secondary" asp-page="Index" asp-route-periodo="@Model.Periodo" asp-route-tipo="@Model.Tipo">← Volver a la liquidación</a>
+        <a class="btn-secondary" asp-page="/Recibo/Index" asp-route-liquidacionId="@(Model.Liq!.Id)" asp-route-empleadoId="@Model.EmpleadoId">Ver recibo</a>
+    </div>
+</section>

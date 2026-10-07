@@ -1,0 +1,79 @@
+@model (LiquidacionSueldos.Web.Pages.Recibo.ReciboVm Vm, bool Original)
+@using LiquidacionSueldos.Web.Pages.Recibo
+@{
+    var vm = Model.Vm; var c = vm.Calculo; var d = vm.Empleador;
+    var torta = vm.Torta(); var costoTotal = vm.Costo.CostoTotal == 0 ? 1 : vm.Costo.CostoTotal;
+    var ingreso = DateOnly.TryParse(vm.Empleado.FechaIngreso, out var fi) ? Fmt.Fecha(fi) : "—";
+}
+<div class="recibo-copy">
+    <span class="recibo-copy-label">@(Model.Original ? "ORIGINAL" : "DUPLICADO")</span>
+    <span class="recibo-estado-badge @(vm.Congelado ? "congelado" : "borrador")">@(vm.Congelado ? "🔒 Valores congelados al liquidar" : "⚠ Borrador — valores provisorios")</span>
+
+    <div class="recibo-block-title"><span class="n">1</span> Datos identificatorios</div>
+    <div class="recibo-copy-head">
+        <div class="recibo-employer">
+            @if (!string.IsNullOrEmpty(d.LogoDataUrl)) { <img class="recibo-logo" src="@d.LogoDataUrl" alt="Logo" /> }
+            <div class="recibo-employer-text"><strong>@(string.IsNullOrWhiteSpace(d.RazonSocial) ? "DATOS DEL EMPLEADOR" : d.RazonSocial)</strong>
+                <span>CUIT: @(string.IsNullOrWhiteSpace(d.Cuit) ? "—" : d.Cuit) · @(string.IsNullOrWhiteSpace(d.Domicilio) ? "Domicilio no informado" : d.Domicilio)</span></div>
+        </div>
+        <div class="recibo-title-row">
+            <div class="recibo-title"><strong>@(string.IsNullOrWhiteSpace(d.Leyenda) ? "Recibo de haberes" : d.Leyenda)</strong><span>Período @vm.Periodo · @vm.Tipo</span></div>
+            <div class="recibo-meta"><span>Fecha de pago: <b>@Fmt.Fecha(vm.FechaPago)</b></span><span>@d.Lugar</span></div>
+        </div>
+    </div>
+    <div class="recibo-employee">
+        <div class="full"><span>Empleado</span><strong>@vm.Empleado.Nombre</strong></div>
+        <div><span>CUIL</span><strong>@(string.IsNullOrWhiteSpace(vm.Empleado.Cuil) ? "—" : vm.Empleado.Cuil)</strong></div>
+        <div><span>Legajo</span><strong>@(string.IsNullOrWhiteSpace(vm.Empleado.Legajo) ? "—" : vm.Empleado.Legajo)</strong></div>
+        <div><span>Ingreso / antig.</span><strong>@ingreso · @c.Anios años</strong></div>
+        <div><span>Convenio / categoría</span><strong>@(string.IsNullOrWhiteSpace(vm.Convenio) ? "—" : vm.Convenio) · @(string.IsNullOrWhiteSpace(vm.Categoria) ? "—" : vm.Categoria)</strong></div>
+    </div>
+
+    <div class="recibo-block">
+        <div class="recibo-block-title"><span class="n">2</span> Aportes y contribuciones (costo del empleador)</div>
+        <div class="recibo-block-note">Base de cálculo de todos los ítems: remuneración bruta remunerativa (@Fmt.Money(c.Remunerativo)).</div>
+        <table class="recibo-table">
+            <thead><tr><th>Concepto</th><th style="width:44px;text-align:right;">Alícuota</th><th style="width:80px;text-align:right;">Importe</th></tr></thead>
+            <tbody>
+                <tr class="section-row"><td colspan="3">Aportes del trabajador (retenidos del bruto)</td></tr>
+                @foreach (var r in vm.Aportes()) { <tr><td>@r.Nombre</td><td class="money">@Fmt.Pct(r.Alicuota)</td><td class="money">@Fmt.Money(r.Valor)</td></tr> }
+                @if (vm.Aportes().Count == 0) { <tr><td colspan="3">Sin aportes</td></tr> }
+                <tr class="section-row patronal"><td colspan="3">Contribuciones del empleador (costo adicional, no se descuenta)</td></tr>
+                @foreach (var r in vm.Patronales()) { <tr><td>@r.Nombre</td><td class="money">@Fmt.Pct(r.Alicuota)</td><td class="money">@Fmt.Money(r.Valor)</td></tr> }
+                @if (vm.Patronales().Count == 0) { <tr><td colspan="3">Sin contribuciones cargadas</td></tr> }
+                <tr><td><strong>Total contribuciones patronales</strong></td><td></td><td class="money"><strong>@Fmt.Money(vm.Costo.ContribTotal)</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="recibo-block">
+        <div class="recibo-block-title"><span class="n">3</span> Remuneración bruta y deducciones</div>
+        <table class="recibo-table recibo-table-4col">
+            <thead><tr><th>Concepto</th><th style="width:52px;text-align:right;">Remun.</th><th style="width:52px;text-align:right;">No remun.</th><th style="width:52px;text-align:right;">Descuentos</th></tr></thead>
+            <tbody>
+                @foreach (var r in vm.Haberes().Where(x => x.Rem)) { <tr><td>@r.Nombre</td><td class="money">@Fmt.Money(r.Valor)</td><td class="money">—</td><td class="money">—</td></tr> }
+                @foreach (var r in vm.Haberes().Where(x => !x.Rem)) { <tr><td>@r.Nombre</td><td class="money">—</td><td class="money">@Fmt.Money(r.Valor)</td><td class="money">—</td></tr> }
+                @foreach (var r in vm.Descuentos()) { <tr><td>@r.Nombre</td><td class="money">—</td><td class="money">—</td><td class="money">@Fmt.Money(r.Valor)</td></tr> }
+                <tr class="total-row"><td><strong>Total</strong></td><td class="money"><strong>@Fmt.Money(c.Remunerativo)</strong></td><td class="money"><strong>@Fmt.Money(c.NoRem)</strong></td><td class="money"><strong>@Fmt.Money(c.Descuentos)</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="recibo-block">
+        <div class="recibo-block-title"><span class="n">4</span> Remuneración neta</div>
+        <div class="recibo-total neto"><span>Neto a pagar</span><strong>@Fmt.Money(c.Neto)</strong></div>
+    </div>
+
+    <div class="recibo-costo">
+        <div class="recibo-costo-chart">@Html.Raw(ReciboVm.TortaSvg(torta, 60))</div>
+        <div class="recibo-costo-legend">
+            <div class="recibo-costo-total"><span>Costo laboral total</span><span>@Fmt.Money(vm.Costo.CostoTotal)</span></div>
+            @foreach (var s in torta)
+            {
+                <div class="recibo-costo-item"><span class="sw" style="background:@s.Color"></span><span class="lbl">@s.Label</span><span class="pct">@((s.Value / costoTotal * 100m).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%</span></div>
+            }
+        </div>
+    </div>
+
+    <div class="recibo-footer"><div class="firma">Firma del empleador</div><div class="firma">Firma del trabajador · Recibí conforme</div></div>
+</div>

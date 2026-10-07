@@ -1,0 +1,45 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Empleados.IndexModel
+@{ ViewData["Title"] = "Empleados"; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Base de empleados</h1>
+        <p>@Model.EmpresaNombre</p>
+    </div>
+    <partial name="_Alert" model="(Model.Ok, Model.Error)" />
+
+    <div class="page-actions">
+        <a class="btn-primary" asp-page="Editar">+ Nuevo empleado</a>
+        <form method="get" class="inline-form">
+            <input name="q" value="@Model.Q" placeholder="Buscar por apellido, legajo o CUIL" style="width:260px;" />
+            <label style="font-size:12px;"><input type="checkbox" name="inactivos" value="true" checked="@Model.Inactivos" /> Ver inactivos</label>
+            <button class="btn-secondary" type="submit">Filtrar</button>
+        </form>
+    </div>
+
+    <div class="emp-table-wrap panel">
+        <table class="table-simple">
+            <thead><tr><th>Legajo</th><th>Apellido y nombre</th><th>CUIL</th><th>Convenio / Categoría</th><th class="money">Básico</th><th>Ingreso</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var e in Model.Lista)
+            {
+                <tr>
+                    <td>@e.Legajo</td>
+                    <td>@e.NombreCompleto @if (!e.Activo) { <span class="badge warn">Inactivo</span> }</td>
+                    <td>@e.Cuil</td>
+                    <td>@(e.Convenio?.Nombre ?? "—")@(e.Categoria != null ? " · " + e.Categoria.Nombre : "")</td>
+                    <td class="money">@Fmt.Money(e.BasicoEfectivo)</td>
+                    <td>@Fmt.Fecha(e.FechaIngreso)</td>
+                    <td style="text-align:right;white-space:nowrap;">
+                        <a class="btn-small" asp-page="Editar" asp-route-id="@e.Id">Editar</a>
+                        <form method="post" asp-page-handler="Eliminar" asp-route-id="@e.Id" class="inline-form">
+                            <button class="btn-small btn-danger-outline" data-confirm="¿Eliminar a @e.NombreCompleto? Si tiene liquidaciones, se dará de baja en lugar de borrarlo.">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Lista.Count == 0) { <tr><td colspan="7" class="hint">No hay empleados para mostrar.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</section>

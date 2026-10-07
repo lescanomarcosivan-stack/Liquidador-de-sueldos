@@ -1,0 +1,197 @@
+@page
+@{ ViewData["Title"] = "Guía de estudio"; }
+<section class="view active guia">
+    <div class="view-head">
+        <h1>Guía de estudio</h1>
+        <p>Qué hace este programa por dentro y por qué está armado así. Pensada para leerla con el código abierto al lado.</p>
+    </div>
+
+    <div class="panel">
+        <h3>Índice</h3>
+        <ol>
+            <li><a href="#stack">Las piezas (el stack)</a></li>
+            <li><a href="#carpetas">Qué hay en cada carpeta</a></li>
+            <li><a href="#peticion">Qué pasa cuando abrís una pantalla</a></li>
+            <li><a href="#razor">Razor Pages: cómo se arma una pantalla</a></li>
+            <li><a href="#bd">La base de datos con EF Core</a></li>
+            <li><a href="#tenant">Varios estudios en la misma base (multi-tenant)</a></li>
+            <li><a href="#identity">Usuarios, login y roles</a></li>
+            <li><a href="#calculo">El motor de cálculo del sueldo</a></li>
+            <li><a href="#cierre">Cerrar una liquidación y rectificarla</a></li>
+            <li><a href="#recibo">El recibo y la impresión</a></li>
+            <li><a href="#deploy">Cómo llega a Railway (Docker)</a></li>
+            <li><a href="#practica">Ejercicios para practicar</a></li>
+        </ol>
+    </div>
+
+    <div class="panel" id="stack">
+        <h3>1. Las piezas (el stack)</h3>
+        <table class="table-simple">
+            <thead><tr><th>Pieza</th><th>Para qué sirve acá</th></tr></thead>
+            <tbody>
+                <tr><td><strong>.NET 10 / C#</strong></td><td>El lenguaje y la plataforma. Todo el código del servidor está en C#.</td></tr>
+                <tr><td><strong>ASP.NET Core</strong></td><td>El servidor web: recibe las peticiones del navegador y devuelve HTML.</td></tr>
+                <tr><td><strong>Razor Pages</strong></td><td>La forma de armar las pantallas: cada pantalla es un archivo HTML con C# adentro (<code>.cshtml</code>) más una clase con la lógica (<code>.cshtml.cs</code>).</td></tr>
+                <tr><td><strong>PostgreSQL</strong></td><td>La base de datos donde se guardan estudios, empresas, empleados, liquidaciones, etc.</td></tr>
+                <tr><td><strong>Entity Framework Core (EF Core)</strong></td><td>Traductor entre clases de C# y tablas de la base. Vos escribís C#, él genera el SQL.</td></tr>
+                <tr><td><strong>ASP.NET Core Identity</strong></td><td>Usuarios, contraseñas (guardadas con hash), login y roles.</td></tr>
+                <tr><td><strong>Docker + Railway</strong></td><td>Docker empaqueta la app; Railway la ejecuta en internet junto con PostgreSQL.</td></tr>
+            </tbody>
+        </table>
+        <p class="hint">Diferencia con el prototipo HTML: allá todo vivía en el navegador (un solo archivo, datos locales). Acá el cálculo y los datos viven en el servidor y la base, y el navegador solo muestra pantallas.</p>
+    </div>
+
+    <div class="panel" id="carpetas">
+        <h3>2. Qué hay en cada carpeta</h3>
+<pre class="codeblock">src/LiquidacionSueldos.Web
+  Program.cs        Punto de entrada: registra servicios y arma el "pipeline" de la app
+  Domain/           Las "cosas" del negocio, sin pantallas ni base de datos
+    Entities.cs       Clases que se guardan en la base (Empresa, Empleado, Liquidacion...)
+    CalculoSueldos.cs El motor de cálculo (función pura)
+    Snapshots.cs      La "foto" que se congela al cerrar una liquidación
+    Cuit.cs, Fmt.cs   Validar CUIT y formatear importes/fechas a la argentina
+  Data/             AppDbContext (la conexión con la base) y datos iniciales
+  Services/         Reglas de negocio que usan varias pantallas
+    LiquidacionService.cs  guardar borrador, cerrar, rectificar
+    TenantContext.cs       "¿de qué estudio y empresa es el usuario actual?"
+    AuditoriaService.cs    registrar quién hizo qué
+  Infrastructure/   Piezas técnicas (conexión a la base, filtro de empresa activa)
+  Pages/            Las pantallas (una carpeta por tema)
+  wwwroot/          Archivos estáticos: CSS y JavaScript
+tests/              Pruebas automáticas del cálculo
+Dockerfile          Receta para empaquetar la app</pre>
+        <p class="hint">Regla de orden: <strong>Domain</strong> no conoce a Pages. Las pantallas llaman a los servicios, los servicios usan el dominio y la base. Así el cálculo se puede probar sin abrir el navegador.</p>
+    </div>
+
+    <div class="panel" id="peticion">
+        <h3>3. Qué pasa cuando abrís una pantalla</h3>
+        <p>Ejemplo: entrás a <code>/Empleados</code>.</p>
+        <ol>
+            <li>El navegador pide la URL al servidor.</li>
+            <li><strong>Pipeline</strong> (<code>Program.cs</code>, líneas <code>app.Use...</code>): la petición pasa por capas en orden: archivos estáticos, enrutamiento, <em>autenticación</em> (¿quién sos?, lee la cookie) y <em>autorización</em> (¿podés entrar?). Si no estás logueado te manda a <code>/Account/Login</code>.</li>
+            <li>El <strong>enrutamiento</strong> relaciona <code>/Empleados</code> con <code>Pages/Empleados/Index.cshtml</code>.</li>
+            <li>Un <strong>filtro</strong> (<code>EmpresaRequeridaFilter</code>) revisa que tengas una empresa activa; si no, te manda a elegir una.</li>
+            <li>Se ejecuta el método <code>OnGetAsync</code> de la clase <code>IndexModel</code>: consulta la base y deja los datos en propiedades.</li>
+            <li>Se dibuja el <code>.cshtml</code> con esos datos, dentro de <code>_Layout.cshtml</code> (menú lateral), y se devuelve HTML al navegador.</li>
+        </ol>
+        <p><strong>Inyección de dependencias:</strong> fijate que las clases piden lo que necesitan en el constructor (por ejemplo <code>AppDbContext db</code>). No hacen <code>new</code>: ASP.NET las crea y entrega, según lo registrado en <code>Program.cs</code> (<code>builder.Services.Add...</code>). Eso permite cambiar o probar piezas por separado.</p>
+    </div>
+
+    <div class="panel" id="razor">
+        <h3>4. Razor Pages: cómo se arma una pantalla</h3>
+        <p>Tomá <code>Pages/Conceptos/Index.cshtml</code> y <code>Index.cshtml.cs</code> como ejemplo.</p>
+        <ul>
+            <li><code>@@page</code> en la primera línea convierte el archivo en una pantalla con URL propia.</li>
+            <li><code>@@model</code> dice qué clase trae los datos (el <em>PageModel</em>). En la vista se accede con <code>Model.</code>.</li>
+            <li><strong>Handlers:</strong> <code>OnGet</code> responde a abrir la pantalla; <code>OnPost</code> a enviar un formulario. Con <code>OnPostEliminarAsync</code> y un botón con <code>asp-page-handler="Eliminar"</code> una misma pantalla maneja varias acciones.</li>
+            <li><strong>[BindProperty]:</strong> los campos del formulario se copian solos a las propiedades marcadas así (<em>model binding</em>). Por eso en el HTML los <code>name</code> coinciden con las propiedades (<code>Input.Nombre</code>).</li>
+            <li><strong>Tag helpers</strong> (<code>asp-page</code>, <code>asp-for</code>, <code>asp-route-id</code>): atributos especiales que generan los links, los nombres de campos y el token antifalsificación.</li>
+            <li><strong>Antiforgery:</strong> todo formulario POST lleva un token oculto; protege contra que otro sitio envíe formularios en tu nombre (CSRF).</li>
+            <li><strong>Post → Redirect → Get:</strong> después de guardar se hace <code>RedirectToPage()</code> en vez de mostrar la página. Así, si apretás F5 no se vuelve a guardar. El mensaje "Guardado" viaja en <code>[TempData]</code>, que vive una sola petición.</li>
+            <li><strong>Partials:</strong> trozos reutilizables, como <code>_Alert</code> (mensajes) o <code>_ReciboCopia</code> (una copia del recibo).</li>
+        </ul>
+    </div>
+
+    <div class="panel" id="bd">
+        <h3>5. La base de datos con EF Core</h3>
+        <ul>
+            <li>Cada clase de <code>Domain/Entities.cs</code> es una tabla; cada propiedad, una columna. <code>AppDbContext</code> tiene un <code>DbSet</code> por tabla.</li>
+            <li>Las consultas se escriben con <strong>LINQ</strong>: <code>db.Empleados.Where(e => e.Activo).OrderBy(e => e.Apellido)</code> se traduce a SQL. Nada se ejecuta hasta el <code>ToListAsync()</code> o similar.</li>
+            <li><code>Include(...)</code> trae también los datos relacionados (empleado → convenio → categoría); sin Include esas propiedades vienen vacías.</li>
+            <li><code>SaveChangesAsync()</code> guarda <em>todos</em> los cambios pendientes juntos, en una transacción: o se guarda todo o nada. Por eso la auditoría se anota con <code>audit.Registrar</code> y se graba junto con el cambio.</li>
+            <li><strong>Dinero = <code>decimal</code></strong>, nunca <code>double</code> (que tiene errores de redondeo binario). En la base: precisión (18,6).</li>
+            <li><strong>jsonb:</strong> la foto de un recibo cerrado se guarda como JSON en una sola columna, porque no hay que consultarla por dentro, solo leerla completa.</li>
+            <li><strong>Índices únicos:</strong> no puede haber dos empleados con el mismo legajo en una empresa, ni dos liquidaciones con el mismo (empresa, período, tipo, versión).</li>
+            <li><strong>Migraciones:</strong> son el historial de cambios del esquema. <code>dotnet ef migrations add</code> genera un archivo; al arrancar, la app lo aplica. Así podés agregar una columna sin perder datos.</li>
+        </ul>
+    </div>
+
+    <div class="panel" id="tenant">
+        <h3>6. Varios estudios en la misma base (multi-tenant)</h3>
+        <p>Varios estudios contables comparten tablas, pero ninguno debe ver datos de otro. Se resuelve en tres capas:</p>
+        <ol>
+            <li>Toda entidad del estudio implementa <code>IEstudioOwned</code> (tiene <code>EstudioId</code>).</li>
+            <li><strong>Filtro global</strong> en <code>AppDbContext.OnModelCreating</code>: EF agrega automáticamente <code>WHERE EstudioId = (estudio del usuario)</code> a <em>toda</em> consulta. Por eso en las pantallas no ves ese filtro escrito.</li>
+            <li><code>SaveChanges</code> estampa el <code>EstudioId</code> en lo nuevo y impide cambiarlo.</li>
+        </ol>
+        <p>El estudio y la empresa activa del usuario viajan como <strong>claims</strong> (datos dentro de la cookie de sesión), que lee <code>TenantContext</code>. Al cambiar de empresa se actualiza la cookie.</p>
+        <p class="hint">Cuidado clásico: <code>FindAsync</code> ignora los filtros globales. Por eso el código usa <code>FirstOrDefaultAsync(x => x.Id == id)</code>.</p>
+    </div>
+
+    <div class="panel" id="identity">
+        <h3>7. Usuarios, login y roles</h3>
+        <ul>
+            <li><strong>Identity</strong> guarda usuarios y roles en la base. La contraseña nunca se guarda: se guarda un <em>hash</em>.</li>
+            <li>Al iniciar sesión se crea una <strong>cookie</strong> cifrada. Las claves para cifrarla se guardan en la base (<code>PersistKeysToDbContext</code>); sin eso, cada redeploy cerraría las sesiones.</li>
+            <li><strong>Bloqueo:</strong> 5 intentos fallidos bloquean 10 minutos.</li>
+            <li><strong>Autorización:</strong> en <code>Program.cs</code>, <code>AuthorizeFolder("/")</code> exige login en todo, <code>AllowAnonymousToFolder("/Account")</code> exceptúa login y registro, y <code>AuthorizeFolder("/Usuarios", "Admin")</code> reserva esa carpeta a Administradores.</li>
+            <li>Además, las pantallas de Administrador comprueban <code>tenant.IsAdmin</code> en el servidor. <strong>Ocultar un botón no es seguridad</strong>: la validación real siempre va en el servidor.</li>
+        </ul>
+    </div>
+
+    <div class="panel" id="calculo">
+        <h3>8. El motor de cálculo del sueldo</h3>
+        <p>Está en <code>Domain/CalculoSueldos.cs</code>. Es una <strong>función pura</strong>: recibe datos, devuelve resultados, no toca la base ni la pantalla. Eso la hace fácil de probar (<code>tests/</code>).</p>
+        <p>Orden de cálculo (cada importe se redondea a 2 decimales):</p>
+        <table class="table-simple">
+            <thead><tr><th>Concepto</th><th>Fórmula</th></tr></thead>
+            <tbody>
+                <tr><td>Básico</td><td>Básico de la categoría × (días pagos ÷ 30)</td></tr>
+                <tr><td>Antigüedad</td><td>Básico × % por año × años cumplidos</td></tr>
+                <tr><td>Presentismo</td><td>(Básico + antigüedad) × %</td></tr>
+                <tr><td>Hora extra</td><td>(Básico ÷ 200) × multiplicador (1,5 ó 2) × horas</td></tr>
+                <tr><td>Total remunerativo</td><td>Básico + antigüedad + presentismo + horas extra + conceptos remunerativos</td></tr>
+                <tr><td>Aportes</td><td>Jubilación 11 %, Ley 19.032 3 %, obra social 3 %, sindicato (si está afiliado), todos sobre el total remunerativo</td></tr>
+                <tr><td>Neto</td><td>Remunerativo + no remunerativo − descuentos</td></tr>
+            </tbody>
+        </table>
+        <p><strong>Ejemplo real de las pruebas:</strong> básico 1.000.000, ingreso en 03/2020, período 09/2026 → 6 años. Antigüedad = 1.000.000 × 1 % × 6 = 60.000. Presentismo = 1.060.000 × 8,33 % = 88.298. Remunerativo = 1.148.298. Aportes = 126.312,78 + 34.448,94 + 34.448,94 + 22.965,96 = 218.176,62. Neto = <strong>930.121,38</strong>.</p>
+        <p class="hint">Los porcentajes se guardan como fracciones (11 % = 0,11) y en pantalla se muestran ×100. Los "% de haberes" de un concepto se calculan sobre básico + antigüedad + presentismo + horas extra (no sobre otros conceptos), para que el resultado no dependa del orden en que se cargaron.</p>
+    </div>
+
+    <div class="panel" id="cierre">
+        <h3>9. Cerrar una liquidación y rectificarla</h3>
+        <ul>
+            <li><strong>Borrador:</strong> los importes se calculan "en vivo" con los datos actuales. Si cambia el sueldo de una categoría, el borrador cambia.</li>
+            <li><strong>Cierre</strong> (<code>LiquidacionService.CerrarAsync</code>): para cada empleado se guarda una <em>foto</em> (<code>SnapshotLinea</code>) con los importes, los parámetros del convenio, los datos del empleado y de la empresa. Desde ese momento el recibo se lee de la foto y <strong>nunca se recalcula</strong>.</li>
+            <li><strong>¿Por qué?</strong> Un recibo ya entregado no puede cambiar porque después se modificó un convenio o se corrigió un domicilio. Es un requisito de cualquier sistema de sueldos.</li>
+            <li><strong>Rectificativa:</strong> para corregir una liquidación cerrada se crea una versión nueva (v2, v3…) en borrador, copiando las novedades. La original queda intacta como historial.</li>
+            <li>Todo queda en <strong>Auditoría</strong>: quién cerró, cuándo y qué.</li>
+        </ul>
+    </div>
+
+    <div class="panel" id="recibo">
+        <h3>10. El recibo y la impresión</h3>
+        <ul>
+            <li><code>ReciboVm</code> arma un modelo único para una copia del recibo, venga de la foto (cerrado) o del cálculo en vivo (borrador). La vista <code>_ReciboCopia.cshtml</code> solo lo dibuja.</li>
+            <li>El <strong>gráfico de costo laboral</strong> es un SVG generado por código (<code>ReciboVm.TortaSvg</code>): cada porción es un arco calculado con seno y coseno. No usa librerías.</li>
+            <li><strong>Impresión</strong> con CSS: <code>@@page { size: A4 landscape }</code> define la hoja horizontal, y <code>@@media print</code> oculta menú y botones. Original y duplicado van en una grilla de 2 columnas.</li>
+            <li>Al apretar "Imprimir" se registra en auditoría y la página se recarga con la impresión automática.</li>
+        </ul>
+    </div>
+
+    <div class="panel" id="deploy">
+        <h3>11. Cómo llega a Railway (Docker)</h3>
+        <ol>
+            <li><strong>Dockerfile en dos etapas:</strong> la primera usa el SDK de .NET para compilar y publicar; la segunda, una imagen liviana solo con el runtime, donde se copia el resultado. La imagen final es chica y no lleva el código fuente.</li>
+            <li>Railway construye esa imagen cada vez que subís cambios a GitHub y la ejecuta.</li>
+            <li><code>DATABASE_URL</code>: Railway entrega la conexión a PostgreSQL en una variable de entorno. <code>ConnectionStringResolver</code> la convierte al formato que entiende Npgsql. <strong>Los secretos nunca van en el código.</strong></li>
+            <li><code>PORT</code>: Railway indica el puerto; <code>Program.cs</code> lo toma.</li>
+            <li><strong>Proxy:</strong> Railway termina el HTTPS antes de llegar a la app. La variable <code>ASPNETCORE_FORWARDEDHEADERS_ENABLED</code> hace que la app sepa que el usuario entró por https (necesario para cookies y links correctos).</li>
+            <li>Al arrancar, la app espera a la base, aplica migraciones (o crea las tablas) y crea los roles. Eso está en <code>InicializarBaseAsync</code>.</li>
+        </ol>
+    </div>
+
+    <div class="panel" id="practica">
+        <h3>12. Ejercicios para practicar</h3>
+        <p>Ordenados de más fácil a más difícil. Después de cada uno corré <code>dotnet test</code> y probá la pantalla.</p>
+        <ol>
+            <li>Cambiá el texto de la leyenda por defecto del recibo (<code>Entities.cs</code>, clase <code>Empresa</code>).</li>
+            <li>Agregá un campo "Teléfono" al empleado: propiedad en <code>Empleado</code>, campo en <code>Editar.cshtml</code>, asignación en <code>Editar.cshtml.cs</code>, y una migración nueva.</li>
+            <li>Agregá una prueba en <code>CalculoSueldosTests</code> para un empleado sin antigüedad que hace 8 horas extra al 100 %. Calculá primero el resultado a mano.</li>
+            <li>Mostrá en el inicio el neto total de la última liquidación cerrada (consulta nueva en <code>Pages/Index.cshtml.cs</code>).</li>
+            <li>Agregá un tipo de liquidación "SAC" (aguinaldo): empezá por ver dónde está la lista <code>Tipos</code> en <code>Liquidacion/Index.cshtml.cs</code> y pensá qué cambia en el cálculo.</li>
+        </ol>
+        <p class="hint">Cuando algo no se entienda, buscá el nombre en el código (Ctrl+Shift+F en Visual Studio Code) y seguí las llamadas: pantalla → servicio → dominio → base.</p>
+    </div>
+</section>

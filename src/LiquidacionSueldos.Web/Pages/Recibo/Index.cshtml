@@ -1,0 +1,65 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Recibo.IndexModel
+@{
+    ViewData["Title"] = "Recibo de sueldo";
+    ViewData["BodyClass"] = "print-recibo";
+}
+@section Head {
+    <style media="print">@@page{size:A4 landscape;margin:5mm}</style>
+}
+<section class="view active">
+    <div class="view-head">
+        <h1>Recibo de sueldo</h1>
+        <p>Seleccioná una liquidación y un empleado. La impresión genera original y duplicado en una hoja A4 horizontal.</p>
+    </div>
+
+    <div class="recibo-toolbar panel no-print">
+        <form method="get" class="recibo-controls" id="form-recibo">
+            <div class="recibo-field"><label>Liquidación</label>
+                <select name="LiquidacionId" onchange="this.form.EmpleadoId.value='';this.form.submit()">
+                    @foreach (var l in Model.Liquidaciones)
+                    {
+                        <option value="@l.Id" selected="@(l.Id == Model.Liq?.Id)">@l.Periodo · @l.Tipo@(l.Version > 1 ? " · v" + l.Version : "") · @(l.EstaCerrada ? "cerrada" : "borrador")</option>
+                    }
+                    @if (Model.Liquidaciones.Count == 0) { <option value="">— sin liquidaciones —</option> }
+                </select></div>
+            <div class="recibo-field"><label>Empleado</label>
+                <select name="EmpleadoId" onchange="this.form.submit()" disabled="@Model.Todos">
+                    @foreach (var l in Model.Lineas) { <option value="@l.EmpleadoId" selected="@(l.EmpleadoId == Model.EmpleadoId)">@(l.Empleado!.NombreCompleto)</option> }
+                </select></div>
+            <div class="recibo-field"><label>&nbsp;</label>
+                <label style="font-size:12px;"><input type="checkbox" name="Todos" value="true" checked="@Model.Todos" onchange="this.form.submit()" /> Todos los empleados</label></div>
+        </form>
+        <div class="recibo-actions">
+            @if (Model.Recibos.Count > 0)
+            {
+                <form method="post" asp-page-handler="Imprimir" class="inline-form">
+                    <input type="hidden" name="LiquidacionId" value="@(Model.Liq!.Id)" />
+                    <input type="hidden" name="EmpleadoId" value="@Model.EmpleadoId" />
+                    <input type="hidden" name="Todos" value="@(Model.Todos ? "true" : "false")" />
+                    <button class="btn-primary" type="submit">🖨 Imprimir recibo@(Model.Todos ? "s" : "")</button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="recibo-preview-wrap">
+        @if (Model.Recibos.Count == 0)
+        {
+            <div class="recibo-empty"><strong>No hay recibos para mostrar</strong> Guardá una liquidación con empleados seleccionados.</div>
+        }
+        @foreach (var vm in Model.Recibos)
+        {
+            <div class="recibo-page">
+                <partial name="_ReciboCopia" model="(vm, true)" />
+                <partial name="_ReciboCopia" model="(vm, false)" />
+            </div>
+        }
+    </div>
+</section>
+@section Scripts {
+    @if (Model.AutoPrint)
+    {
+        <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 300); });</script>
+    }
+}

@@ -1,0 +1,63 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Usuarios.IndexModel
+@{ ViewData["Title"] = "Usuarios"; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Usuarios</h1>
+        <p>Personas del estudio que pueden ingresar. Administrador: todo. Operador: empleados, liquidación, recibos y vacaciones.</p>
+    </div>
+    <partial name="_Alert" model="(Model.Ok, Model.Error)" />
+    @if (!ModelState.IsValid) { <div class="alert error">@foreach (var e in ModelState.Values.SelectMany(v => v.Errors)) { <div>@e.ErrorMessage</div> }</div> }
+
+    <div class="panel">
+        <table class="table-simple">
+            <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Nueva contraseña</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var f in Model.Lista)
+            {
+                <tr>
+                    <td>@f.User.NombreCompleto</td>
+                    <td>@f.User.Email</td>
+                    <td>
+                        <form method="post" asp-page-handler="Rol" class="inline-form">
+                            <input type="hidden" name="id" value="@f.User.Id" />
+                            <select name="rol" onchange="this.form.submit()">
+                                <option value="@Roles.Admin" selected="@(f.Rol == Roles.Admin)">Administrador</option>
+                                <option value="@Roles.Operador" selected="@(f.Rol == Roles.Operador)">Operador</option>
+                            </select>
+                        </form>
+                    </td>
+                    <td><span class="badge @(f.User.Activo ? "" : "warn")">@(f.User.Activo ? "Activo" : "Inactivo")</span></td>
+                    <td>
+                        <form method="post" asp-page-handler="Clave" class="inline-form">
+                            <input type="hidden" name="id" value="@f.User.Id" />
+                            <input type="password" name="password" placeholder="mín. 8 caracteres" style="width:140px;" autocomplete="new-password" />
+                            <button class="btn-small" type="submit">Cambiar</button>
+                        </form>
+                    </td>
+                    <td>
+                        <form method="post" asp-page-handler="Activo" class="inline-form">
+                            <input type="hidden" name="id" value="@f.User.Id" />
+                            <button class="btn-small" type="submit">@(f.User.Activo ? "Desactivar" : "Activar")</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="panel" style="margin-top:18px;">
+        <h3>Nuevo usuario</h3>
+        <form method="post" asp-page-handler="Crear">
+            <div class="form-grid">
+                <div class="field"><label>Nombre y apellido *</label><input asp-for="Input.Nombre" required /></div>
+                <div class="field"><label>Email *</label><input asp-for="Input.Email" type="email" required /></div>
+                <div class="field"><label>Contraseña inicial *</label><input asp-for="Input.Password" type="password" required autocomplete="new-password" /></div>
+                <div class="field"><label>Rol</label>
+                    <select asp-for="Input.Rol"><option value="@Roles.Operador">Operador</option><option value="@Roles.Admin">Administrador</option></select></div>
+            </div>
+            <div class="page-actions" style="margin-top:14px;"><button class="btn-primary" type="submit">Crear usuario</button></div>
+        </form>
+    </div>
+</section>

@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LiquidacionSueldos.Web/LiquidacionSueldos.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LiquidacionSueldos.Tests/LiquidacionSueldos.Tests.csproj" />
+  </Folder>
+</Solution>

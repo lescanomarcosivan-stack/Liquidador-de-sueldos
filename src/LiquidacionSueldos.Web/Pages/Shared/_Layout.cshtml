@@ -1,0 +1,81 @@
+@inject ITenantContext Tenant
+@inject LiquidacionSueldos.Web.Data.AppDbContext Db
+@using Microsoft.EntityFrameworkCore
+@{
+    var empresas = await Db.Empresas.OrderBy(e => e.RazonSocial).Select(e => new { e.Id, e.RazonSocial }).ToListAsync();
+    var activa = Tenant.EmpresaId;
+    var path = (ViewContext.RouteData.Values["page"] as string ?? "").Trim('/').ToLowerInvariant();
+    string Act(string p) => p == "" ? (path == "index" ? "active" : "") : (path == p || path.StartsWith(p + "/") ? "active" : "");
+    var bodyClass = ViewData["BodyClass"] as string ?? "";
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(ViewData["Title"] ?? "Liquidación de Sueldos")</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%2312233f'/></svg>" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body class="@bodyClass">
+<aside class="sidebar">
+    <div class="brand">
+        <div class="brand-title">Liquidación de Sueldos</div>
+        <div class="brand-sub">Estudio contable</div>
+    </div>
+    <div class="empresa-selector-box">
+        <form method="post" asp-page="/CambiarEmpresa">
+            <label for="selector-empresa">Empresa</label>
+            <select id="selector-empresa" name="id" onchange="this.form.submit()">
+                @if (empresas.Count == 0)
+                {
+                    <option value="">— sin empresas —</option>
+                }
+                @foreach (var e in empresas)
+                {
+                    <option value="@e.Id" selected="@(e.Id == activa)">@e.RazonSocial</option>
+                }
+            </select>
+        </form>
+        @if (Tenant.IsAdmin)
+        {
+            <a class="sidebar-btn" style="display:block;margin-top:6px;text-align:center;text-decoration:none;" asp-page="/Empresas/Index">+ Nueva empresa</a>
+        }
+    </div>
+    <nav>
+        <a class="nav-btn @Act("")" asp-page="/Index"><span class="num">0</span> Inicio</a>
+        @if (Tenant.IsAdmin)
+        {
+            <a class="nav-btn @Act("convenios")" asp-page="/Convenios/Index"><span class="num">1</span> Convenios</a>
+            <a class="nav-btn @Act("conceptos")" asp-page="/Conceptos/Index"><span class="num">2</span> Conceptos</a>
+        }
+        <a class="nav-btn @Act("empleados")" asp-page="/Empleados/Index"><span class="num">3</span> Base de empleados</a>
+        <a class="nav-btn @Act("liquidacion")" asp-page="/Liquidacion/Index"><span class="num">4</span> Liquidación</a>
+        <a class="nav-btn @Act("recibo")" asp-page="/Recibo/Index"><span class="num">5</span> Recibo de sueldo</a>
+        <a class="nav-btn @Act("vacaciones")" asp-page="/Vacaciones/Index"><span class="num">6</span> Vacaciones</a>
+        @if (Tenant.IsAdmin)
+        {
+            <a class="nav-btn @Act("empresas")" asp-page="/Empresas/Index"><span class="num">7</span> Empresas</a>
+            <a class="nav-btn @Act("usuarios")" asp-page="/Usuarios/Index"><span class="num">8</span> Usuarios</a>
+            <a class="nav-btn @Act("auditoria")" asp-page="/Auditoria/Index"><span class="num">9</span> Auditoría</a>
+        }
+        <a class="nav-btn @Act("guia")" asp-page="/Guia/Index"><span class="num">?</span> Guía de estudio</a>
+    </nav>
+    <div class="sidebar-foot">
+        <div class="sidebar-user-box">
+            <div class="sidebar-user-name">@Tenant.DisplayName</div>
+            <div class="sidebar-user-rol">@(Tenant.IsAdmin ? "Administrador" : "Operador")</div>
+        </div>
+        <form method="post" asp-page="/Account/Logout">
+            <button type="submit" class="sidebar-btn sidebar-logout">⏻ Cerrar sesión</button>
+        </form>
+    </div>
+</aside>
+<main>
+    @RenderBody()
+</main>
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

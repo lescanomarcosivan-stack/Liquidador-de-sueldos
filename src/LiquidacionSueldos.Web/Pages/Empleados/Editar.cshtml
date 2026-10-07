@@ -1,0 +1,102 @@
+@page "{id:guid?}"
+@model LiquidacionSueldos.Web.Pages.Empleados.EditarModel
+@{ ViewData["Title"] = Model.EsNuevo ? "Nuevo empleado" : "Editar empleado"; }
+<section class="view active">
+    <div class="view-head">
+        <h1>@(Model.EsNuevo ? "Nuevo empleado" : "Editar empleado")</h1>
+        <p>La categoría define el sueldo básico. Solo si no pertenece a un convenio se carga un básico propio.</p>
+    </div>
+    @if (!ModelState.IsValid)
+    {
+        <div class="alert error">@foreach (var e in ModelState.Values.SelectMany(v => v.Errors)) { <div>@e.ErrorMessage</div> }</div>
+    }
+
+    <form method="post" id="form-empleado">
+        <input type="hidden" asp-for="Input.Id" />
+        <div class="form-section">
+            <h3>Datos personales</h3>
+            <div class="form-grid">
+                <div class="field"><label>Legajo *</label><input asp-for="Input.Legajo" required maxlength="30" /></div>
+                <div class="field"><label>Apellido *</label><input asp-for="Input.Apellido" required maxlength="100" /></div>
+                <div class="field"><label>Nombre *</label><input asp-for="Input.Nombre" required maxlength="100" /></div>
+                <div class="field"><label>DNI</label><input asp-for="Input.Dni" maxlength="15" /></div>
+                <div class="field"><label>CUIL</label><input asp-for="Input.Cuil" maxlength="15" placeholder="20-12345678-3" /></div>
+                <div class="field"><label>Sexo</label>
+                    <select asp-for="Input.Sexo"><option value="">—</option><option>Masculino</option><option>Femenino</option><option>Otro</option></select></div>
+                <div class="field"><label>Fecha de nacimiento</label><input asp-for="Input.FechaNacimiento" type="date" /></div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Relación laboral</h3>
+            <div class="form-grid">
+                <div class="field wide"><label>Convenio</label>
+                    <select asp-for="Input.ConvenioId" id="emp-convenio">
+                        <option value="">— Sin convenio —</option>
+                        @foreach (var c in Model.Convenios) { <option value="@c.Id">@c.Nombre</option> }
+                    </select></div>
+                <div class="field wide"><label>Categoría</label>
+                    <select asp-for="Input.CategoriaSel" id="emp-categoria">
+                        <option value="" data-convenio="">— Sin categoría —</option>
+                        @foreach (var cat in Model.Categorias) { <option value="@cat.Id" data-convenio="@cat.ConvenioId" data-basico="@Fmt.Input(cat.Basico)">@cat.Nombre — @Fmt.Money(cat.Basico)</option> }
+                        @if (Model.EsNuevo && Model.EsAdmin) { <option value="__new__" data-convenio="*">+ Crear categoría nueva en este convenio…</option> }
+                    </select></div>
+                <div class="field full" id="emp-nueva-categoria-wrap" style="display:none;">
+                    <div class="form-grid">
+                        <div class="field"><label>Código</label><input asp-for="Input.NuevaCatCodigo" maxlength="30" /></div>
+                        <div class="field wide"><label>Nombre de la categoría *</label><input asp-for="Input.NuevaCatNombre" maxlength="150" /></div>
+                        <div class="field"><label>Básico ($) *</label><input asp-for="Input.NuevaCatBasico" type="number" step="0.01" min="0" /></div>
+                    </div>
+                </div>
+                <div class="field" id="emp-basico-wrap"><label>Sueldo básico propio ($)</label><input asp-for="Input.Basico" type="number" step="0.01" min="0" />
+                    <p class="hint">Solo para empleados sin categoría de convenio.</p></div>
+                <div class="field"><label>Puesto</label><input asp-for="Input.Puesto" maxlength="150" /></div>
+                <div class="field"><label>Fecha de ingreso</label><input asp-for="Input.FechaIngreso" type="date" /></div>
+                <div class="field"><label>Fecha de egreso</label><input asp-for="Input.FechaEgreso" type="date" /></div>
+                <div class="field"><label>Modalidad</label><input asp-for="Input.Modalidad" maxlength="40" /></div>
+                <div class="field"><label>Jornada</label>
+                    <select asp-for="Input.Jornada"><option>Completa</option><option>Parcial</option></select></div>
+                <div class="field"><label>Horas semanales</label><input asp-for="Input.HorasSemanales" type="number" step="any" min="0" max="60" /></div>
+                <div class="field"><label>Obra social</label><input asp-for="Input.ObraSocial" maxlength="150" /></div>
+                <div class="field"><label>Banco / CBU</label><input asp-for="Input.Banco" maxlength="150" /></div>
+                <div class="field"><label>Afiliado al sindicato</label>
+                    <select asp-for="Input.AfiliadoSindicato"><option value="true">Sí</option><option value="false">No</option></select></div>
+                <div class="field"><label>Estado</label>
+                    <select asp-for="Input.Activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
+                <div class="field full"><label>Observaciones</label><textarea asp-for="Input.Observaciones" rows="2" maxlength="1000"></textarea></div>
+            </div>
+        </div>
+
+        <div class="page-actions">
+            <button class="btn-primary" type="submit">Guardar</button>
+            <a class="btn-secondary" asp-page="Index">Cancelar</a>
+        </div>
+    </form>
+</section>
+@section Scripts {
+<script>
+(function () {
+  var conv = document.getElementById('emp-convenio');
+  var cat = document.getElementById('emp-categoria');
+  var wrapNueva = document.getElementById('emp-nueva-categoria-wrap');
+  var wrapBasico = document.getElementById('emp-basico-wrap');
+  function filtrar() {
+    var c = conv.value;
+    Array.prototype.forEach.call(cat.options, function (o) {
+      var d = o.getAttribute('data-convenio');
+      var visible = o.value === '' || (d === '*' ? !!c : d === c);
+      o.hidden = !visible; o.disabled = !visible;
+    });
+    if (cat.selectedOptions[0] && cat.selectedOptions[0].disabled) cat.value = '';
+    estado();
+  }
+  function estado() {
+    wrapNueva.style.display = cat.value === '__new__' ? '' : 'none';
+    wrapBasico.style.display = cat.value === '' ? '' : 'none';
+  }
+  conv.addEventListener('change', filtrar);
+  cat.addEventListener('change', estado);
+  filtrar();
+})();
+</script>
+}

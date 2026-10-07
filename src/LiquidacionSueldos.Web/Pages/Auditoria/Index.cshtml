@@ -1,0 +1,34 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Auditoria.IndexModel
+@{ ViewData["Title"] = "Auditoría"; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Auditoría</h1>
+        <p>Registro de quién hizo qué en el estudio. No se puede modificar ni borrar.</p>
+    </div>
+    <form method="get" class="page-actions">
+        <input name="Q" value="@Model.Q" placeholder="Buscar por usuario, acción o detalle" style="width:300px;" />
+        <button class="btn-secondary" type="submit">Buscar</button>
+        <span class="hint">@Model.Total registros</span>
+    </form>
+    <div class="panel">
+        <table class="table-simple">
+            <thead><tr><th style="width:140px;">Fecha</th><th style="width:160px;">Usuario</th><th style="width:180px;">Acción</th><th>Detalle</th></tr></thead>
+            <tbody>
+            @foreach (var a in Model.Items)
+            {
+                <tr><td>@Fmt.FechaHora(a.Fecha)</td><td>@a.Usuario</td><td><span class="badge">@a.Accion</span></td><td>@a.Detalle</td></tr>
+            }
+            @if (Model.Items.Count == 0) { <tr><td colspan="4" class="hint">Sin registros.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.Paginas > 1)
+    {
+        <div class="page-actions" style="margin-top:12px;">
+            @if (Model.Pagina > 1) { <a class="btn-small" asp-page="Index" asp-route-Q="@Model.Q" asp-route-Pagina="@(Model.Pagina - 1)">← Anterior</a> }
+            <span class="hint">Página @Model.Pagina de @Model.Paginas</span>
+            @if (Model.Pagina < Model.Paginas) { <a class="btn-small" asp-page="Index" asp-route-Q="@Model.Q" asp-route-Pagina="@(Model.Pagina + 1)">Siguiente →</a> }
+        </div>
+    }
+</section>

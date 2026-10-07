@@ -1,0 +1,103 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Convenios.IndexModel
+@{ ViewData["Title"] = "Convenios"; var c = Model.Actual; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Convenios colectivos</h1>
+        <p>Parámetros de liquidación y categorías con su sueldo básico. Se comparten entre todas las empresas del estudio.</p>
+    </div>
+    <partial name="_Alert" model="(Model.Ok, Model.Error)" />
+
+    <div class="page-actions">
+        @foreach (var x in Model.Lista)
+        {
+            <a class="@(c?.Id == x.Id ? "btn-primary" : "btn-secondary")" asp-page="Index" asp-route-id="@x.Id">@x.Nombre</a>
+        }
+        <a class="btn-add" asp-page="Index" asp-route-nuevo="true">+ Nuevo convenio</a>
+    </div>
+
+    @if (Model.EsNuevo || c != null)
+    {
+        <div class="convenio-card">
+            <h3>@(Model.EsNuevo ? "Nuevo convenio" : c!.Nombre)</h3>
+            <form method="post" asp-page-handler="Guardar">
+                <input type="hidden" asp-for="Input.Id" />
+                <div class="form-grid">
+                    <div class="field full"><label>Nombre *</label><input asp-for="Input.Nombre" required maxlength="200" /></div>
+                </div>
+                <div class="param-grid">
+                    <div class="field"><label>Antigüedad (% por año)</label><input asp-for="Input.Antiguedad" type="number" step="any" min="0" /></div>
+                    <div class="field"><label>Presentismo (%)</label><input asp-for="Input.Presentismo" type="number" step="any" min="0" /></div>
+                    <div class="field"><label>Hora extra 50% (multiplicador %)</label><input asp-for="Input.He50" type="number" step="any" min="0" /></div>
+                    <div class="field"><label>Hora extra 100% (multiplicador %)</label><input asp-for="Input.He100" type="number" step="any" min="0" /></div>
+                    <div class="field"><label>Jubilación (%)</label><input asp-for="Input.Jubilacion" type="number" step="any" min="0" /></div>
+                    <div class="field"><label>INSSJP – Ley 19.032 (%)</label><input asp-for="Input.Inssjp" type="number" step="any" min="0" /></div>
+                    <div class="field"><label>Obra social (%)</label><input asp-for="Input.ObraSocial" type="number" step="any" min="0" /></div>
+                    <div class="field"><label>Cuota sindical (%)</label><input asp-for="Input.Sindicato" type="number" step="any" min="0" /></div>
+                    <div class="field"><label>Vacaciones: hasta 5 años (días)</label><input asp-for="Input.Vac5" type="number" min="0" max="60" /></div>
+                    <div class="field"><label>Vacaciones: 5 a 10 años (días)</label><input asp-for="Input.Vac10" type="number" min="0" max="60" /></div>
+                    <div class="field"><label>Vacaciones: más de 10 años (días)</label><input asp-for="Input.VacMas10" type="number" min="0" max="60" /></div>
+                </div>
+                <div class="page-actions" style="margin-top:14px;">
+                    <button class="btn-primary" type="submit">@(Model.EsNuevo ? "Crear convenio" : "Guardar parámetros")</button>
+                </div>
+            </form>
+
+            @if (!Model.EsNuevo && c != null)
+            {
+                <h4 style="margin:22px 0 8px;">Categorías y sueldos básicos</h4>
+                <div class="categoria-table-wrap">
+                    <table class="table-simple">
+                        <thead><tr><th style="width:120px;">Código</th><th>Nombre</th><th style="width:170px;">Básico ($)</th><th style="width:170px;"></th></tr></thead>
+                        <tbody>
+                        @foreach (var cat in c.Categorias.OrderBy(x => x.Codigo).ThenBy(x => x.Nombre))
+                        {
+                            <tr>
+                                <td><input form="cat-@cat.Id" name="codigo" value="@cat.Codigo" maxlength="30" /></td>
+                                <td><input form="cat-@cat.Id" name="nombre" value="@cat.Nombre" maxlength="150" required /></td>
+                                <td><input form="cat-@cat.Id" name="basico" type="number" step="0.01" min="0" value="@Fmt.Input(cat.Basico)" /></td>
+                                <td style="white-space:nowrap;">
+                                    <button form="cat-@cat.Id" class="btn-small" type="submit">Guardar</button>
+                                    <button form="cat-@cat.Id" class="btn-small btn-danger-outline" type="submit" asp-page-handler="EliminarCategoria" asp-route-id="@c.Id" asp-route-catId="@cat.Id" formnovalidate data-confirm="¿Eliminar la categoría «@cat.Nombre»?">Eliminar</button>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @foreach (var cat in c.Categorias)
+                {
+                    <form id="cat-@cat.Id" method="post" asp-page-handler="GuardarCategoria" asp-route-id="@c.Id" asp-route-catId="@cat.Id"></form>
+                }
+
+                <form method="post" asp-page-handler="AgregarCategoria" asp-route-id="@c.Id" style="margin-top:12px;">
+                    <div class="form-grid">
+                        <div class="field"><label>Código</label><input name="codigo" maxlength="30" /></div>
+                        <div class="field wide"><label>Nombre *</label><input name="nombre" required maxlength="150" /></div>
+                        <div class="field"><label>Básico ($) *</label><input name="basico" type="number" step="0.01" min="0" required /></div>
+                    </div>
+                    <div class="page-actions" style="margin-top:10px;"><button class="btn-add" type="submit">+ Agregar categoría</button></div>
+                </form>
+
+                <h4 style="margin:22px 0 8px;">Paritaria</h4>
+                <p class="hint">Aplica un aumento porcentual a los básicos de todas las categorías de este convenio.
+                    @if (c.UltimaParitariaPorcentaje.HasValue) { <span>Última aplicada: <strong>@Fmt.Num2(c.UltimaParitariaPorcentaje.Value)%</strong> el @Fmt.Fecha(c.UltimaParitariaFecha).</span> }
+                </p>
+                <form method="post" asp-page-handler="Paritaria" asp-route-id="@c.Id" class="page-actions">
+                    <input name="porcentaje" type="number" step="any" min="-50" max="500" required placeholder="% de aumento" style="width:140px;" />
+                    <button class="btn-secondary" type="submit" data-confirm="¿Aplicar el aumento a todas las categorías del convenio?">Aplicar paritaria</button>
+                </form>
+
+                <div class="page-actions" style="margin-top:20px;">
+                    <form method="post" asp-page-handler="Eliminar" asp-route-id="@c.Id" class="inline-form">
+                        <button class="btn-small btn-danger-outline" type="submit" data-confirm="¿Eliminar el convenio «@c.Nombre» y sus categorías?">Eliminar convenio</button>
+                    </form>
+                </div>
+            }
+        </div>
+    }
+    else if (Model.Lista.Count == 0)
+    {
+        <div class="panel"><p>No hay convenios cargados. Creá el primero con «+ Nuevo convenio».</p></div>
+    }
+</section>

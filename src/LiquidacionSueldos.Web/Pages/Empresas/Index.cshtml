@@ -1,0 +1,61 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Empresas.IndexModel
+@{ ViewData["Title"] = "Empresas"; var e = Model.Input; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Empresas</h1>
+        <p>Empleadores cuyos sueldos liquida el estudio. Los datos se usan en el encabezado del recibo.</p>
+    </div>
+    <partial name="_Alert" model="(Model.Ok, Model.Error)" />
+
+    <div class="panel">
+        <table class="table-simple">
+            <thead><tr><th>Razón social</th><th>CUIT</th><th>Domicilio</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var x in Model.Lista)
+            {
+                <tr>
+                    <td>@x.RazonSocial</td><td>@Cuit.Formatear(x.Cuit)</td><td>@x.Domicilio</td>
+                    <td style="text-align:right;white-space:nowrap;">
+                        <a class="btn-small" asp-page="Index" asp-route-id="@x.Id">Editar</a>
+                        <form method="post" asp-page-handler="Eliminar" asp-route-id="@x.Id" class="inline-form">
+                            <button class="btn-small btn-danger-outline" data-confirm="¿Eliminar la empresa «@x.RazonSocial»? Solo se puede si no tiene empleados ni liquidaciones.">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Lista.Count == 0) { <tr><td colspan="4" class="hint">Todavía no hay empresas.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="panel" style="margin-top:18px;">
+        <h3>@(Model.Editando ? "Editar empresa" : "Nueva empresa")</h3>
+        @if (!ModelState.IsValid) { <div class="alert error">@foreach (var er in ModelState.Values.SelectMany(v => v.Errors)) { <div>@er.ErrorMessage</div> }</div> }
+        <form method="post" enctype="multipart/form-data">
+            <input type="hidden" asp-for="Input.Id" />
+            <div class="form-grid">
+                <div class="field wide"><label>Razón social *</label><input asp-for="Input.RazonSocial" required maxlength="200" /></div>
+                <div class="field"><label>CUIT *</label><input asp-for="Input.Cuit" required maxlength="20" placeholder="30-12345678-9" /></div>
+                <div class="field wide"><label>Domicilio</label><input asp-for="Input.Domicilio" maxlength="250" /></div>
+                <div class="field"><label>Lugar de pago</label><input asp-for="Input.Lugar" maxlength="120" /></div>
+                <div class="field"><label>Leyenda del recibo</label><input asp-for="Input.Leyenda" maxlength="80" /></div>
+                <div class="field wide"><label>Logo (PNG o JPG, máx. 300 KB)</label><input type="file" name="Logo" accept="image/png,image/jpeg" />
+                    @if (!string.IsNullOrEmpty(Model.LogoActual)) { <div class="hint"><img src="@Model.LogoActual" alt="logo" style="max-height:40px;vertical-align:middle;" /> <label><input type="checkbox" name="QuitarLogo" value="true" /> Quitar logo</label></div> }
+                </div>
+            </div>
+            <h4 style="margin:18px 0 8px;">Contribuciones patronales (%)</h4>
+            <div class="form-grid">
+                <div class="field"><label>Jubilación</label><input asp-for="Input.JubilacionPatronal" type="number" step="any" min="0" max="100" /></div>
+                <div class="field"><label>Obra social</label><input asp-for="Input.ObraSocialPatronal" type="number" step="any" min="0" max="100" /></div>
+                <div class="field"><label>ART</label><input asp-for="Input.Art" type="number" step="any" min="0" max="100" /></div>
+                <div class="field"><label>Asignaciones familiares</label><input asp-for="Input.AsignacionesFamiliares" type="number" step="any" min="0" max="100" /></div>
+                <div class="field"><label>Aporte sindical patronal</label><input asp-for="Input.SindicalPatronal" type="number" step="any" min="0" max="100" /></div>
+            </div>
+            <div class="page-actions" style="margin-top:16px;">
+                <button type="submit" class="btn-primary">@(Model.Editando ? "Guardar cambios" : "Crear empresa")</button>
+                @if (Model.Editando) { <a class="btn-secondary" asp-page="Index">Cancelar</a> }
+            </div>
+        </form>
+    </div>
+</section>

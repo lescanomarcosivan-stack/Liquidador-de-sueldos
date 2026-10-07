@@ -1,0 +1,28 @@
+@page
+@model IndexModel
+@{ ViewData["Title"] = "Inicio"; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Inicio</h1>
+        <p>@(Model.Empresa?.RazonSocial ?? "Sin empresa activa")</p>
+    </div>
+
+    @if (Model.Empresa == null)
+    {
+        <div class="alert warn">No hay una empresa activa. <a asp-page="/SinEmpresa">Elegí o creá una</a> para empezar.</div>
+    }
+    else
+    {
+        <div class="dash-grid">
+            <div class="panel"><div class="hint">Empleados activos</div><h2>@Model.Empleados</h2></div>
+            <div class="panel"><div class="hint">Convenios</div><h2>@Model.Convenios</h2></div>
+            <div class="panel"><div class="hint">Liquidaciones cerradas</div><h2>@Model.Cerradas</h2></div>
+            <div class="panel"><div class="hint">Borradores</div><h2>@Model.Borradores</h2></div>
+        </div>
+        <div class="page-actions">
+            <a class="btn-primary" asp-page="/Liquidacion/Index">Liquidar @Fmt.PeriodoLargo(Fmt.PeriodoActual())</a>
+            <a class="btn-secondary" asp-page="/Empleados/Index">Base de empleados</a>
+            <a class="btn-secondary" asp-page="/Recibo/Index">Recibos</a>
+        </div>
+    }
+</section>

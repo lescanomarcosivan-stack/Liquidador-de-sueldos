@@ -1,0 +1,65 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Vacaciones.IndexModel
+@{ ViewData["Title"] = "Vacaciones"; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Vacaciones</h1>
+        <p>Cálculo de licencia anual según antigüedad y convenio. Valor del día: básico ÷ 25.</p>
+    </div>
+    <partial name="_Tabs" />
+    <partial name="_Alert" model="(Model.Ok, Model.Error)" />
+
+    <div class="panel">
+        <form method="get" id="form-vac">
+            <div class="form-grid">
+                <div class="field wide"><label>Empleado</label>
+                    <select name="EmpleadoId" onchange="this.form.Dias.value='';this.form.submit()">
+                        @foreach (var e in Model.Empleados) { <option value="@e.Id" selected="@(e.Id == Model.Empleado?.Id)">@e.NombreCompleto · Legajo @e.Legajo</option> }
+                        @if (Model.Empleados.Count == 0) { <option value="">No hay empleados activos</option> }
+                    </select></div>
+                <div class="field"><label>Período de licencia</label><input type="month" name="Periodo" value="@Model.Periodo" /></div>
+                <div class="field"><label>Fecha de inicio</label><input type="date" name="Inicio" value="@Fmt.FechaIso(Model.Inicio)" /></div>
+                <div class="field"><label>Días a otorgar</label><input type="number" name="Dias" min="0" max="60" step="1" value="@(Model.Dias?.ToString() ?? "")" placeholder="@Model.DiasSugeridos" /></div>
+                <div class="field"><label>&nbsp;</label><button class="btn-secondary" type="submit">Calcular</button></div>
+            </div>
+        </form>
+
+        @if (Model.Empleado != null)
+        {
+            <div class="calc-lines" style="margin-top:16px;max-width:520px;">
+                <div class="calc-row"><span>Antigüedad</span><strong>@Model.Anios año@(Model.Anios == 1 ? "" : "s")</strong></div>
+                <div class="calc-row"><span>Convenio</span><strong>@(Model.Empleado.Convenio?.Nombre ?? "Sin convenio")</strong></div>
+                <div class="calc-row"><span>Días sugeridos por convenio</span><strong>@Model.DiasSugeridos</strong></div>
+                <div class="calc-row"><span>Días a otorgar</span><strong>@Model.DiasAOtorgar</strong></div>
+                <div class="calc-row"><span>Básico mensual de referencia</span><strong>@Fmt.Money(Model.Base)</strong></div>
+                <div class="calc-row"><span>Valor del día (÷ 25)</span><strong>@Fmt.Money(Model.ValorDia)</strong></div>
+                <div class="calc-row"><span><strong>Importe de vacaciones</strong></span><strong>@Fmt.Money(Model.Importe)</strong></div>
+            </div>
+            <form method="post" asp-page-handler="Guardar" style="margin-top:14px;">
+                <input type="hidden" name="EmpleadoId" value="@Model.Empleado.Id" />
+                <input type="hidden" name="Periodo" value="@Model.Periodo" />
+                <input type="hidden" name="Inicio" value="@Fmt.FechaIso(Model.Inicio)" />
+                <input type="hidden" name="Dias" value="@Model.DiasAOtorgar" />
+                <button class="btn-primary" type="submit">Guardar licencia</button>
+            </form>
+        }
+    </div>
+
+    <div class="panel vac-table-wrap" style="margin-top:18px;">
+        <h3>Historial</h3>
+        <table class="table-simple">
+            <thead><tr><th>Empleado</th><th>Período</th><th>Inicio</th><th>Días</th><th class="money">Importe</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var v in Model.Historial)
+            {
+                <tr>
+                    <td>@v.Empleado?.NombreCompleto</td><td>@v.Periodo</td><td>@Fmt.Fecha(v.Inicio)</td><td>@v.Dias</td>
+                    <td class="money">@Fmt.Money(v.Importe)</td>
+                    <td><form method="post" asp-page-handler="Eliminar" asp-route-id="@v.Id" class="inline-form"><button class="btn-small btn-danger-outline" data-confirm="¿Eliminar este registro?">Eliminar</button></form></td>
+                </tr>
+            }
+            @if (Model.Historial.Count == 0) { <tr><td colspan="6" class="hint">No hay vacaciones registradas.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</section>

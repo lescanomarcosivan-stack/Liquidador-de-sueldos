@@ -1,0 +1,102 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Liquidacion.IndexModel
+@{ ViewData["Title"] = "Liquidación"; var liq = Model.Liq; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Liquidación de sueldos</h1>
+        <p>@Model.EmpresaNombre</p>
+    </div>
+    <partial name="_Alert" model="(Model.Ok, Model.Error)" />
+
+    <form method="get" class="panel liq-panel">
+        <div class="form-grid">
+            <div class="field"><label>Período</label><input type="month" name="Periodo" value="@Model.Periodo" /></div>
+            <div class="field"><label>Tipo de liquidación</label>
+                <select name="Tipo">
+                    @foreach (var t in IndexModel.Tipos) { <option value="@t" selected="@(t == Model.Tipo)">@(t == "Final" ? "Liquidación final" : t)</option> }
+                </select></div>
+            <div class="field"><label>&nbsp;</label><button class="btn-secondary" type="submit">Abrir</button></div>
+        </div>
+    </form>
+
+    <div style="margin:14px 0;">
+        @if (liq == null) { <span class="badge warn">Sin guardar</span> }
+        else if (liq.EstaCerrada) { <span class="badge">Cerrada</span> }
+        else { <span class="badge warn">Borrador</span> }
+        @if (liq is { Version: > 1 }) { <span class="badge">Rectificativa v@(liq.Version)</span> }
+    </div>
+
+    @if (Model.Cerrada)
+    {
+        <div class="alert warn">Liquidación cerrada por <strong>@(liq!.CerradaPor)</strong> el @(liq.CerradaFecha.HasValue ? Fmt.FechaHora(liq.CerradaFecha.Value) : ""). Los recibos no se recalculan. Para corregir algo, creá una rectificativa.</div>
+    }
+
+    <div class="dash-grid">
+        <div class="panel liq-summary-card"><span>Empleados</span><strong>@Model.TotalEmpleados</strong></div>
+        <div class="panel liq-summary-card"><span>Remunerativo</span><strong>@Fmt.Money(Model.TotalRem)</strong></div>
+        <div class="panel liq-summary-card"><span>Descuentos</span><strong>@Fmt.Money(Model.TotalDesc)</strong></div>
+        <div class="panel liq-summary-card highlight"><span>Neto a pagar</span><strong>@Fmt.Money(Model.TotalNeto)</strong></div>
+    </div>
+
+    <form method="post">
+        <input type="hidden" name="Periodo" value="@Model.Periodo" />
+        <input type="hidden" name="Tipo" value="@Model.Tipo" />
+        <div class="panel liq-panel">
+            <div class="form-grid" style="margin-bottom:12px;">
+                <div class="field"><label>Fecha de pago</label><input type="date" asp-for="FechaPago" disabled="@Model.Cerrada" /></div>
+            </div>
+            <div class="liq-table-wrap">
+                <table class="table-simple">
+                    <thead><tr>
+                        <th></th><th>Empleado</th><th>Días</th><th>Aus.</th><th>HE 50%</th><th>HE 100%</th><th>Otros desc.</th><th>No rem.</th>
+                        <th class="money">Remunerativo</th><th class="money">Descuentos</th><th class="money">Neto</th><th></th>
+                    </tr></thead>
+                    <tbody>
+                    @for (var i = 0; i < Model.Filas.Count; i++)
+                    {
+                        var f = Model.Filas[i];
+                        var dis = Model.Cerrada;
+                        <tr>
+                            <td>
+                                <input type="hidden" name="Lineas[@i].EmpleadoId" value="@f.Empleado.Id" />
+                                <input type="checkbox" name="Lineas[@i].Seleccionado" value="true" checked="@f.Input.Seleccionado" disabled="@dis" />
+                                @if (dis && f.Input.Seleccionado) { <input type="hidden" name="Lineas[@i].Seleccionado" value="true" /> }
+                            </td>
+                            <td>@f.Empleado.NombreCompleto<div class="hint">@(f.Empleado.Convenio?.Nombre ?? "Sin convenio")@(f.Empleado.Categoria != null ? " · " + f.Empleado.Categoria.Nombre : "") · @Fmt.Money(f.Empleado.BasicoEfectivo)</div></td>
+                            <td><input style="width:60px;" type="number" min="0" max="31" step="1" name="Lineas[@i].Dias" value="@Fmt.Input(f.Input.Dias)" readonly="@dis" /></td>
+                            <td><input style="width:60px;" type="number" min="0" max="31" step="1" name="Lineas[@i].Ausencias" value="@Fmt.Input(f.Input.Ausencias)" readonly="@dis" /></td>
+                            <td><input style="width:70px;" type="number" min="0" step="0.01" name="Lineas[@i].He50" value="@Fmt.Input(f.Input.He50)" readonly="@dis" /></td>
+                            <td><input style="width:70px;" type="number" min="0" step="0.01" name="Lineas[@i].He100" value="@Fmt.Input(f.Input.He100)" readonly="@dis" /></td>
+                            <td><input style="width:100px;" type="number" min="0" step="0.01" name="Lineas[@i].OtrosDescuentos" value="@Fmt.Input(f.Input.OtrosDescuentos)" readonly="@dis" /></td>
+                            <td><input style="width:100px;" type="number" min="0" step="0.01" name="Lineas[@i].NoRemunerativo" value="@Fmt.Input(f.Input.NoRemunerativo)" readonly="@dis" /></td>
+                            <td class="money">@Fmt.Money(f.Calculo.Remunerativo)</td>
+                            <td class="money">@Fmt.Money(f.Calculo.Descuentos)</td>
+                            <td class="money"><strong>@Fmt.Money(f.Calculo.Neto)</strong></td>
+                            <td>
+                                @if (f.EnLiquidacion)
+                                {
+                                    <a class="btn-small" asp-page="Detalle" asp-route-periodo="@Model.Periodo" asp-route-tipo="@Model.Tipo" asp-route-empleadoId="@f.Empleado.Id">Detalle</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Filas.Count == 0) { <tr><td colspan="12" class="hint">No hay empleados activos. Cargalos desde «Base de empleados».</td></tr> }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="page-actions" style="margin-top:14px;">
+            @if (!Model.Cerrada)
+            {
+                <button class="btn-primary" type="submit" asp-page-handler="Guardar">Guardar borrador</button>
+                <button class="btn-secondary" type="submit" asp-page-handler="Cerrar" data-confirm="Al cerrar, los recibos quedan congelados y ya no se pueden modificar (solo rectificar). ¿Cerrar la liquidación?">Cerrar liquidación</button>
+            }
+            else
+            {
+                <button class="btn-secondary" type="submit" asp-page-handler="Rectificar" asp-route-id="@(liq!.Id)" formnovalidate data-confirm="Se creará una nueva versión en borrador para corregir esta liquidación. ¿Continuar?">Crear rectificativa</button>
+            }
+            @if (liq != null) { <a class="btn-secondary" asp-page="/Recibo/Index" asp-route-liquidacionId="@liq.Id">Ver recibos</a> }
+        </div>
+    </form>
+</section>

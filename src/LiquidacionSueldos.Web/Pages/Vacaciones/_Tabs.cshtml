@@ -1,0 +1,5 @@
+@{ var actual = ViewContext.RouteData.Values["page"] as string ?? ""; }
+<div class="page-actions">
+    <a class="@(actual.EndsWith("/Index") ? "btn-primary" : "btn-secondary")" asp-page="/Vacaciones/Index">Licencias anuales</a>
+    <a class="@(actual.EndsWith("/Notas") ? "btn-primary" : "btn-secondary")" asp-page="/Vacaciones/Notas">Notas y notificaciones</a>
+</div>

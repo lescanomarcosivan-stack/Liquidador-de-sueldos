@@ -1,0 +1,35 @@
+@page
+@model SinEmpresaModel
+@{ ViewData["Title"] = "Elegí una empresa"; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Elegí una empresa</h1>
+        <p>Para empezar a liquidar necesitás seleccionar una empresa activa.</p>
+    </div>
+    @if (Model.Empresas.Count == 0)
+    {
+        <div class="panel">
+            @if (User.IsInRole(Roles.Admin))
+            {
+                <p>Todavía no cargaste ninguna empresa.</p>
+                <a class="btn-primary" asp-page="/Empresas/Index">Crear la primera empresa</a>
+            }
+            else
+            {
+                <p>Tu estudio todavía no tiene empresas. Pedile a un Administrador que cargue una.</p>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="panel">
+            @foreach (var e in Model.Empresas)
+            {
+                <form method="post" class="inline-form" style="display:block;margin-bottom:8px;">
+                    <input type="hidden" name="id" value="@e.Id" />
+                    <button type="submit" class="btn-secondary">@e.RazonSocial <span class="hint">@e.Cuit</span></button>
+                </form>
+            }
+        </div>
+    }
+</section>

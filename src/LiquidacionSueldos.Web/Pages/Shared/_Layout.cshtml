@@ -1,5 +1,6 @@
 @inject ITenantContext Tenant
 @inject LiquidacionSueldos.Web.Data.AppDbContext Db
+@inject IConfiguration Config
 @using Microsoft.EntityFrameworkCore
 @{
     var empresas = await Db.Empresas.OrderBy(e => e.RazonSocial).Select(e => new { e.Id, e.RazonSocial }).ToListAsync();
@@ -60,6 +61,10 @@
             <a class="nav-btn @Act("empresas")" asp-page="/Empresas/Index"><span class="num">7</span> Empresas</a>
             <a class="nav-btn @Act("usuarios")" asp-page="/Usuarios/Index"><span class="num">8</span> Usuarios</a>
             <a class="nav-btn @Act("auditoria")" asp-page="/Auditoria/Index"><span class="num">9</span> Auditoría</a>
+        }
+        @if (LiquidacionSueldos.Web.Services.SuperAdmin.EsSuperAdmin(User, Config))
+        {
+            <a class="nav-btn @Act("plataforma")" asp-page="/Plataforma/Index"><span class="num">★</span> Plataforma</a>
         }
         <a class="nav-btn @Act("guia")" asp-page="/Guia/Index"><span class="num">?</span> Guía de estudio</a>
     </nav>

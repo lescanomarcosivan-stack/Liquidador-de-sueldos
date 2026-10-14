@@ -1,0 +1,27 @@
+name: Compilar y probar
+
+# Se ejecuta en cada subida (push) y en cada pull request.
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restaurar paquetes
+        run: dotnet restore LiquidacionSueldos.slnx
+
+      - name: Compilar
+        run: dotnet build LiquidacionSueldos.slnx -c Release --no-restore
+
+      - name: Pruebas
+        run: dotnet test LiquidacionSueldos.slnx -c Release --no-build --verbosity normal

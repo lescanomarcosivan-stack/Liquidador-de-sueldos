@@ -4,6 +4,8 @@ using LiquidacionSueldos.Web.Infrastructure;
 using LiquidacionSueldos.Web.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -21,6 +23,9 @@ builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddScoped<IAuditoria, AuditoriaService>();
 builder.Services.AddScoped<LiquidacionService>();
 builder.Services.AddScoped<EmpresaActivaService>();
+builder.Services.AddScoped<PlanService>();
+builder.Services.AddHttpClient<ICorreo, CorreoResend>(c => c.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(1));
 
 builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(connectionString));
 
@@ -36,6 +41,7 @@ builder.Services
     })
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders()
+    .AddErrorDescriber<IdentityErrorsEs>()
     .AddClaimsPrincipalFactory<AppClaimsFactory>();
 
 builder.Services.ConfigureApplicationCookie(o =>
@@ -74,6 +80,34 @@ builder.Services.AddRazorPages(o =>
     m.SetMissingBindRequiredValueAccessor(campo => $"Falta el valor de {campo}.");
 });
 
+// Límite de intentos por IP en las páginas de cuenta (frena adivinar contraseñas y el uso del formulario para mandar correos).
+// Solo cuentan los envíos de formulario (POST); navegar por las páginas no consume cupo.
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+    {
+        if (!HttpMethods.IsPost(ctx.Request.Method)) return RateLimitPartition.GetNoLimiter("sin-limite");
+        var path = ctx.Request.Path.Value ?? "";
+        var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "desconocida";
+        if (path.StartsWith("/Account/Login", StringComparison.OrdinalIgnoreCase))
+            return RateLimitPartition.GetFixedWindowLimiter("login:" + ip, _ => new FixedWindowRateLimiterOptions
+                { PermitLimit = 20, Window = TimeSpan.FromMinutes(5), QueueLimit = 0 });
+        if (path.StartsWith("/Account/Register", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/Account/OlvideClave", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/Account/RestablecerClave", StringComparison.OrdinalIgnoreCase))
+            return RateLimitPartition.GetFixedWindowLimiter("cuenta:" + ip, _ => new FixedWindowRateLimiterOptions
+                { PermitLimit = 8, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 });
+        return RateLimitPartition.GetNoLimiter("sin-limite");
+    });
+    o.OnRejected = async (ctx, ct) =>
+    {
+        ctx.HttpContext.Response.Headers["Retry-After"] = "300";
+        ctx.HttpContext.Response.ContentType = "text/plain; charset=utf-8";
+        await ctx.HttpContext.Response.WriteAsync("Demasiados intentos desde tu conexión. Esperá unos minutos y volvé a probar.", ct);
+    };
+});
+
 var app = builder.Build();
 
 await InicializarBaseAsync(app);
@@ -86,6 +120,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapRazorPages();

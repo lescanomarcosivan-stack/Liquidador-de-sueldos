@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LiquidacionSueldos.Web.Pages.Empleados;
 
-public class EditarModel(AppDbContext db, ITenantContext tenant, IAuditoria audit) : PageModel
+public class EditarModel(AppDbContext db, ITenantContext tenant, IAuditoria audit, PlanService plan) : PageModel
 {
     public class EmpleadoInput
     {
@@ -133,6 +133,18 @@ public class EditarModel(AppDbContext db, ITenantContext tenant, IAuditoria audi
         }
 
         if (!ModelState.IsValid) return Page();
+
+        // Límite del plan: aplica al alta de un empleado y a reactivar uno dado de baja.
+        var reactiva = Input.Id.HasValue && Input.Activo &&
+            await db.Empleados.AnyAsync(x => x.Id == Input.Id.Value && x.EmpresaId == empresaId && !x.Activo);
+        if ((!Input.Id.HasValue && Input.Activo) || reactiva)
+        {
+            if (await plan.ValidarAltaAsync(Recurso.Empleados) is { } limite)
+            {
+                ModelState.AddModelError("", limite);
+                return Page();
+            }
+        }
 
         Empleado e;
         var nuevo = !Input.Id.HasValue;

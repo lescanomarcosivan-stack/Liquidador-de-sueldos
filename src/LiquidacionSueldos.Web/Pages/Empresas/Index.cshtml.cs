@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LiquidacionSueldos.Web.Pages.Empresas;
 
-public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit, EmpresaActivaService activa) : PageModel
+public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit, EmpresaActivaService activa, PlanService plan) : PageModel
 {
     public class EmpresaInput
     {
@@ -91,6 +91,11 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
         }
         Empresa e;
         var nueva = !Input.Id.HasValue;
+        if (nueva && await plan.ValidarAltaAsync(Recurso.Empresas) is { } limite)
+        {
+            ModelState.AddModelError("", limite);
+            await CargarAsync(); return Page();
+        }
         if (nueva)
         {
             e = new Empresa { EstudioId = tenant.EstudioId };

@@ -467,6 +467,13 @@ namespace LiquidacionSueldos.Web.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<string>("Plan")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Ilimitado");
+
                     b.HasKey("Id");
 
                     b.ToTable("Estudios");

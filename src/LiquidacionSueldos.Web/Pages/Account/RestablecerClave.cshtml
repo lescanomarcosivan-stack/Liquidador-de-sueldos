@@ -1,0 +1,29 @@
+@page
+@model RestablecerClaveModel
+@{ Layout = "_PublicLayout"; ViewData["Title"] = "Nueva contraseña"; }
+<div class="login-box">
+    <h2>Nueva contraseña</h2>
+    @if (Model.Listo)
+    {
+        <div class="alert ok">Listo, tu contraseña se actualizó. Ya podés ingresar con la nueva.</div>
+        <a class="btn-primary" style="display:block;text-align:center;text-decoration:none;margin-top:14px;" asp-page="Login">Ingresar</a>
+    }
+    else if (Model.EnlaceInvalido)
+    {
+        <div class="alert error">El enlace no es válido o está incompleto.</div>
+        <p class="hint" style="margin-top:14px;"><a asp-page="OlvideClave">Pedir un enlace nuevo</a></p>
+    }
+    else
+    {
+        @if (!ModelState.IsValid) { <div class="alert error">@foreach (var e in ModelState.Values.SelectMany(v => v.Errors)) { <div>@e.ErrorMessage</div> }</div> }
+        <form method="post">
+            <input type="hidden" name="Email" value="@Model.Email" />
+            <input type="hidden" name="Codigo" value="@Model.Codigo" />
+            <label for="Clave">Contraseña nueva (mínimo 8 caracteres)</label>
+            <input id="Clave" asp-for="Clave" type="password" autocomplete="new-password" required autofocus />
+            <label for="Confirmar">Repetir contraseña</label>
+            <input id="Confirmar" asp-for="Confirmar" type="password" autocomplete="new-password" required />
+            <button type="submit" class="btn-primary" style="width:100%;margin-top:16px;">Guardar contraseña</button>
+        </form>
+    }
+</div>

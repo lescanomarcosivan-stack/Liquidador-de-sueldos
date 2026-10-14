@@ -22,6 +22,8 @@ public class Estudio
     public Guid Id { get; set; } = Guid.NewGuid();
     [Required, MaxLength(150)] public string Nombre { get; set; } = "";
     public DateTime CreadoEn { get; set; } = DateTime.UtcNow;
+    /// <summary>Código del plan comercial (ver <see cref="Planes"/>). Los estudios nuevos arrancan en Prueba.</summary>
+    [Required, MaxLength(20)] public string Plan { get; set; } = Planes.Prueba;
 }
 
 public class ApplicationUser : IdentityUser

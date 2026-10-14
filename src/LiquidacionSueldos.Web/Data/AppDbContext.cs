@@ -46,6 +46,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionK
             e.HasIndex(u => u.EstudioId);
         });
 
+        // Los estudios que ya existían antes de los planes quedan en "Ilimitado" (valor por defecto de la columna).
+        b.Entity<Estudio>(e => e.Property(x => x.Plan).HasDefaultValue(Planes.Ilimitado));
+
         b.Entity<Empresa>(e => e.HasIndex(x => x.EstudioId));
 
         b.Entity<Convenio>(e =>

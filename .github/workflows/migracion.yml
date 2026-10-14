@@ -25,7 +25,10 @@ jobs:
 
       - name: Instalar dotnet-ef
         run: dotnet tool install --global dotnet-ef --version "10.0.*"
-
+        
+      - name: Restaurar paquetes
+        run: dotnet restore LiquidacionSueldos.slnx
+      
       - name: Crear la migración
         run: >
           dotnet ef migrations add "${{ github.event.inputs.nombre }}"

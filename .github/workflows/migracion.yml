@@ -1,0 +1,44 @@
+name: Generar migración
+
+# Se ejecuta a mano: pestaña Actions > "Generar migración" > Run workflow.
+# Crea (o agrega) la migración de base de datos y la sube al repositorio.
+on:
+  workflow_dispatch:
+    inputs:
+      nombre:
+        description: "Nombre de la migración (ej. InitialCreate, AgregarPlanes)"
+        required: true
+        default: InitialCreate
+
+permissions:
+  contents: write
+
+jobs:
+  migracion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Instalar dotnet-ef
+        run: dotnet tool install --global dotnet-ef --version "10.0.*"
+
+      - name: Crear la migración
+        run: >
+          dotnet ef migrations add "${{ github.event.inputs.nombre }}"
+          --project src/LiquidacionSueldos.Web
+          --output-dir Migrations
+
+      - name: Compilar con la migración
+        run: dotnet build LiquidacionSueldos.slnx -c Release
+
+      - name: Subir la migración
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add src/LiquidacionSueldos.Web/Migrations
+          git commit -m "Migración: ${{ github.event.inputs.nombre }}"
+          git push

@@ -5,6 +5,7 @@ using LiquidacionSueldos.Web.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -103,7 +104,11 @@ static async Task InicializarBaseAsync(WebApplication app)
     {
         try
         {
-            if (db.Database.GetMigrations().Any()) await db.Database.MigrateAsync();
+            if (db.Database.GetMigrations().Any())
+            {
+                await AdoptarBaseExistenteAsync(db, log);
+                await db.Database.MigrateAsync();
+            }
             else await db.Database.EnsureCreatedAsync();
             break;
         }
@@ -118,4 +123,26 @@ static async Task InicializarBaseAsync(WebApplication app)
     foreach (var rol in new[] { Roles.Admin, Roles.Operador })
         if (!await roles.RoleExistsAsync(rol))
             await roles.CreateAsync(new IdentityRole(rol));
+}
+
+/// <summary>
+/// Las bases creadas antes de existir las migraciones (con EnsureCreated) ya tienen todas las tablas pero
+/// ningún historial. Se registra la migración inicial como aplicada para que Migrate no intente crearlas de nuevo.
+/// </summary>
+static async Task AdoptarBaseExistenteAsync(AppDbContext db, ILogger log)
+{
+    if ((await db.Database.GetAppliedMigrationsAsync()).Any()) return;
+
+    var hayTablas = await db.Database
+        .SqlQueryRaw<bool>("SELECT to_regclass('public.\"AspNetUsers\"') IS NOT NULL AS \"Value\"")
+        .SingleAsync();
+    if (!hayTablas) return; // base vacía: Migrate crea todo
+
+    var inicial = db.Database.GetMigrations().First();
+    log.LogWarning("Base existente sin historial de migraciones: se adopta como '{Migracion}'.", inicial);
+    await db.Database.ExecuteSqlRawAsync(
+        "CREATE TABLE IF NOT EXISTS \"__EFMigrationsHistory\" (\"MigrationId\" varchar(150) NOT NULL PRIMARY KEY, \"ProductVersion\" varchar(32) NOT NULL)");
+    await db.Database.ExecuteSqlRawAsync(
+        "INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ({0}, {1}) ON CONFLICT DO NOTHING",
+        inicial, ProductInfo.GetVersion());
 }

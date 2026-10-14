@@ -51,7 +51,8 @@
             <a class="nav-btn @Act("conceptos")" asp-page="/Conceptos/Index"><span class="num">2</span> Conceptos</a>
         }
         <a class="nav-btn @Act("empleados")" asp-page="/Empleados/Index"><span class="num">3</span> Base de empleados</a>
-        <a class="nav-btn @Act("liquidacion")" asp-page="/Liquidacion/Index"><span class="num">4</span> Liquidación</a>
+        <a class="nav-btn @(path == "liquidacion/resumen" ? "" : Act("liquidacion"))" asp-page="/Liquidacion/Index"><span class="num">4</span> Liquidación</a>
+        <a class="nav-btn @Act("liquidacion/resumen")" asp-page="/Liquidacion/Resumen"><span class="num">Σ</span> Resumen por conceptos</a>
         <a class="nav-btn @Act("recibo")" asp-page="/Recibo/Index"><span class="num">5</span> Recibo de sueldo</a>
         <a class="nav-btn @Act("vacaciones")" asp-page="/Vacaciones/Index"><span class="num">6</span> Vacaciones</a>
         @if (Tenant.IsAdmin)

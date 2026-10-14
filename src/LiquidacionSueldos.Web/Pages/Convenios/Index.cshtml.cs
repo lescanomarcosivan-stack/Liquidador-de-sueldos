@@ -65,6 +65,31 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
         if (!tenant.IsAdmin) return Forbid();
         if (!ModelState.IsValid) { Error = "Ingresá el nombre del convenio."; return RedirectToPage(new { id = Input.Id, nuevo = !Input.Id.HasValue }); }
 
+        // Los parámetros fuera de rango se rechazan (antes se recortaban en silencio).
+        var fuera = new List<string>();
+        void Rango(string nombre, decimal valor, decimal min, decimal max)
+        {
+            if (valor < min || valor > max) fuera.Add($"{nombre} debe estar entre {min} y {max}");
+        }
+        Rango("Antigüedad (% por año)", Input.Antiguedad, 0, 100);
+        Rango("Presentismo (%)", Input.Presentismo, 0, 100);
+        Rango("Hora extra 50% (multiplicador %)", Input.He50, 100, 1000);
+        Rango("Hora extra 100% (multiplicador %)", Input.He100, 100, 1000);
+        Rango("Jubilación (%)", Input.Jubilacion, 0, 100);
+        Rango("INSSJP (%)", Input.Inssjp, 0, 100);
+        Rango("Obra social (%)", Input.ObraSocial, 0, 100);
+        Rango("Cuota sindical (%)", Input.Sindicato, 0, 100);
+        Rango("Vacaciones hasta 5 años (días)", Input.Vac5, 0, 60);
+        Rango("Vacaciones 5 a 10 años (días)", Input.Vac10, 0, 60);
+        Rango("Vacaciones más de 10 años (días)", Input.VacMas10, 0, 60);
+        if (Input.Jubilacion + Input.Inssjp + Input.ObraSocial + Input.Sindicato > 100)
+            fuera.Add("la suma de los aportes del trabajador supera el 100 %");
+        if (fuera.Count > 0)
+        {
+            Error = "No se guardó: " + string.Join("; ", fuera) + ".";
+            return RedirectToPage(new { id = Input.Id, nuevo = !Input.Id.HasValue });
+        }
+
         Convenio c;
         var nuevo = !Input.Id.HasValue;
         if (nuevo) { c = new Convenio { EstudioId = tenant.EstudioId }; db.Convenios.Add(c); }
@@ -119,6 +144,7 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
         var c = await db.Convenios.FirstOrDefaultAsync(x => x.Id == id);
         if (c == null) return NotFound();
         if (string.IsNullOrWhiteSpace(nombre)) { Error = "Ingresá el nombre de la categoría."; return RedirectToPage(new { id }); }
+        if (basico <= 0) { Error = "El sueldo básico de la categoría debe ser mayor a cero."; return RedirectToPage(new { id }); }
 
         db.Categorias.Add(new Categoria
         {
@@ -137,6 +163,7 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
         var cat = await db.Categorias.FirstOrDefaultAsync(x => x.Id == catId && x.ConvenioId == id);
         if (cat == null) return NotFound();
         if (string.IsNullOrWhiteSpace(nombre)) { Error = "El nombre de la categoría no puede quedar vacío."; return RedirectToPage(new { id }); }
+        if (basico <= 0) { Error = "El sueldo básico de la categoría debe ser mayor a cero."; return RedirectToPage(new { id }); }
 
         var anterior = cat.Basico;
         cat.Codigo = (codigo ?? "").Trim();

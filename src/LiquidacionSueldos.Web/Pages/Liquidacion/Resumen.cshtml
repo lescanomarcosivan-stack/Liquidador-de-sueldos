@@ -1,0 +1,78 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Liquidacion.ResumenModel
+@{ ViewData["Title"] = "Resumen por conceptos"; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Resumen por conceptos</h1>
+        <p>@Model.EmpresaNombre · suma de cada concepto de todos los empleados en el período.</p>
+    </div>
+
+    <form method="get" class="panel liq-panel no-print">
+        <div class="form-grid">
+            <div class="field"><label>Período</label><input type="month" name="Periodo" value="@Model.Periodo" /></div>
+            <div class="field"><label>Tipo de liquidación</label>
+                <select name="Tipo">
+                    <option value="" selected="@(Model.Tipo == "")">Todos los tipos del período</option>
+                    @foreach (var t in IndexModel.Tipos) { <option value="@t" selected="@(t == Model.Tipo)">@(t == "Final" ? "Liquidación final" : t)</option> }
+                </select></div>
+            <div class="field"><label>&nbsp;</label><button class="btn-secondary" type="submit">Ver resumen</button></div>
+            <div class="field"><label>&nbsp;</label><button class="btn-secondary" type="button" data-print>🖨 Imprimir</button></div>
+        </div>
+    </form>
+
+    @if (Model.Incluidas.Count == 0)
+    {
+        <div class="alert warn">No hay liquidaciones guardadas en @(Model.Periodo + (Model.Tipo == "" ? "" : " de tipo " + Model.Tipo)). Armalas desde «Liquidación» y volvé.</div>
+    }
+    else
+    {
+        <div class="panel liq-panel">
+            <p class="hint" style="margin:0 0 6px;"><strong>Liquidaciones incluidas</strong> (se toma la última versión de cada tipo):</p>
+            @foreach (var i in Model.Incluidas)
+            {
+                <span class="badge @(i.Cerrada ? "" : "warn")">@(i.Tipo == "Final" ? "Liquidación final" : i.Tipo) · v@(i.Version) · @(i.Cerrada ? "cerrada" : "borrador") · @i.Empleados @(i.Empleados == 1 ? "empleado" : "empleados")</span>
+            }
+        </div>
+
+        @if (Model.HayBorradores)
+        {
+            <div class="alert warn">Hay liquidaciones en borrador: sus importes son un cálculo actual y pueden cambiar hasta que se cierren.</div>
+        }
+
+        <div class="dash-grid">
+            <div class="panel liq-summary-card"><span>Empleados</span><strong>@Model.TotalEmpleados</strong></div>
+            <div class="panel liq-summary-card"><span>Bruto total</span><strong>@Fmt.Money(Model.Bruto)</strong></div>
+            <div class="panel liq-summary-card"><span>Descuentos</span><strong>@Fmt.Money(Model.Descuentos)</strong></div>
+            <div class="panel liq-summary-card highlight"><span>Neto a pagar</span><strong>@Fmt.Money(Model.Neto)</strong></div>
+        </div>
+
+        <div class="panel liq-panel">
+            <table class="table-simple resumen-table">
+                <thead><tr><th>Concepto</th><th class="money">Empleados</th><th class="money">Importe</th></tr></thead>
+                <tbody>
+                @foreach (var s in Model.Secciones)
+                {
+                    <tr class="resumen-sec"><td colspan="3">@s.Titulo</td></tr>
+                    @foreach (var f in s.Filas)
+                    {
+                        <tr><td>@f.Concepto</td><td class="money">@f.Empleados</td><td class="money">@Fmt.Money(f.Importe)</td></tr>
+                    }
+                    @if (s.Filas.Count == 0) { <tr><td colspan="3" class="hint">Sin importes en este grupo.</td></tr> }
+                    <tr class="resumen-sub"><td colspan="2">@s.TotalNombre</td><td class="money">@Fmt.Money(s.Total)</td></tr>
+                }
+                <tr class="resumen-tot"><td colspan="2">Bruto total (remunerativo + no remunerativo)</td><td class="money">@Fmt.Money(Model.Bruto)</td></tr>
+                <tr class="resumen-tot"><td colspan="2">NETO A PAGAR (bruto − descuentos)</td><td class="money">@Fmt.Money(Model.Neto)</td></tr>
+
+                <tr class="resumen-sec"><td colspan="3">@Model.Patronales.Titulo</td></tr>
+                @foreach (var f in Model.Patronales.Filas)
+                {
+                    <tr><td>@f.Concepto</td><td class="money">@f.Empleados</td><td class="money">@Fmt.Money(f.Importe)</td></tr>
+                }
+                <tr class="resumen-sub"><td colspan="2">@Model.Patronales.TotalNombre</td><td class="money">@Fmt.Money(Model.Patronales.Total)</td></tr>
+                <tr class="resumen-tot"><td colspan="2">COSTO LABORAL TOTAL (bruto + contribuciones)</td><td class="money">@Fmt.Money(Model.CostoLaboral)</td></tr>
+                </tbody>
+            </table>
+            <p class="hint">«Empleados» cuenta cuántos tienen ese concepto con importe distinto de cero. Las liquidaciones cerradas usan los valores congelados; las rectificativas reemplazan a la versión original.</p>
+        </div>
+    }
+</section>

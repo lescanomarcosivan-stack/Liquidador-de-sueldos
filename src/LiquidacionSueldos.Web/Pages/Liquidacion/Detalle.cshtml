@@ -16,7 +16,7 @@
         <div class="panel calc-lines">
             <h3>Cálculo</h3>
             <div class="calc-row"><span>Sueldo básico</span><strong>@Fmt.Money(c.Basico)</strong></div>
-            <div class="calc-row"><span>Antigüedad (@c.Anios años)</span><strong>@Fmt.Money(c.Antiguedad)</strong></div>
+            <div class="calc-row"><span>Antigüedad (@c.Anios año@(c.Anios == 1 ? "" : "s"))</span><strong>@Fmt.Money(c.Antiguedad)</strong></div>
             <div class="calc-row"><span>Presentismo</span><strong>@Fmt.Money(c.Presentismo)</strong></div>
             <div class="calc-row"><span>Horas extra 50%</span><strong>@Fmt.Money(c.He50)</strong></div>
             <div class="calc-row"><span>Horas extra 100%</span><strong>@Fmt.Money(c.He100)</strong></div>

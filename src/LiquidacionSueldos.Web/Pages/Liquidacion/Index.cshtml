@@ -31,11 +31,26 @@
         <div class="alert warn">Liquidación cerrada por <strong>@(liq!.CerradaPor)</strong> el @(liq.CerradaFecha.HasValue ? Fmt.FechaHora(liq.CerradaFecha.Value) : ""). Los recibos no se recalculan. Para corregir algo, creá una rectificativa.</div>
     }
 
+    @if (!Model.Cerrada && Model.NetoNegativo.Count > 0)
+    {
+        <div class="alert error">
+            <strong>Neto negativo:</strong> @string.Join(", ", Model.NetoNegativo). Revisá los descuentos y novedades; con neto negativo no se puede cerrar la liquidación.
+        </div>
+    }
+    @if (!Model.Cerrada && Model.SinConvenio.Count > 0)
+    {
+        <div class="alert warn">
+            <strong>Atención:</strong> @string.Join(", ", Model.SinConvenio) @(Model.SinConvenio.Count == 1 ? "no tiene" : "no tienen") convenio asignado.
+            Se liquida solo el básico propio, sin antigüedad, presentismo ni aportes del trabajador (jubilación, obra social, etc.),
+            pero igual se calculan las contribuciones patronales. Asigná un convenio desde «Base de empleados» antes de cerrar.
+        </div>
+    }
+
     <div class="dash-grid">
-        <div class="panel liq-summary-card"><span>Empleados</span><strong>@Model.TotalEmpleados</strong></div>
-        <div class="panel liq-summary-card"><span>Remunerativo</span><strong>@Fmt.Money(Model.TotalRem)</strong></div>
-        <div class="panel liq-summary-card"><span>Descuentos</span><strong>@Fmt.Money(Model.TotalDesc)</strong></div>
-        <div class="panel liq-summary-card highlight"><span>Neto a pagar</span><strong>@Fmt.Money(Model.TotalNeto)</strong></div>
+        <div class="panel liq-summary-card"><span>Empleados</span><strong data-total="empleados">@Model.TotalEmpleados</strong></div>
+        <div class="panel liq-summary-card"><span>Remunerativo</span><strong data-total="rem">@Fmt.Money(Model.TotalRem)</strong></div>
+        <div class="panel liq-summary-card"><span>Descuentos</span><strong data-total="desc">@Fmt.Money(Model.TotalDesc)</strong></div>
+        <div class="panel liq-summary-card highlight"><span>Neto a pagar</span><strong data-total="neto">@Fmt.Money(Model.TotalNeto)</strong></div>
     </div>
 
     <form method="post">
@@ -56,7 +71,7 @@
                     {
                         var f = Model.Filas[i];
                         var dis = Model.Cerrada;
-                        <tr>
+                        <tr data-emp="@f.Empleado.Id">
                             <td>
                                 <input type="hidden" name="Lineas[@i].EmpleadoId" value="@f.Empleado.Id" />
                                 <input type="checkbox" name="Lineas[@i].Seleccionado" value="true" checked="@f.Input.Seleccionado" disabled="@dis" />
@@ -69,9 +84,9 @@
                             <td><input style="width:70px;" type="number" min="0" step="0.01" name="Lineas[@i].He100" value="@Fmt.Input(f.Input.He100)" readonly="@dis" /></td>
                             <td><input style="width:100px;" type="number" min="0" step="0.01" name="Lineas[@i].OtrosDescuentos" value="@Fmt.Input(f.Input.OtrosDescuentos)" readonly="@dis" /></td>
                             <td><input style="width:100px;" type="number" min="0" step="0.01" name="Lineas[@i].NoRemunerativo" value="@Fmt.Input(f.Input.NoRemunerativo)" readonly="@dis" /></td>
-                            <td class="money">@Fmt.Money(f.Calculo.Remunerativo)</td>
-                            <td class="money">@Fmt.Money(f.Calculo.Descuentos)</td>
-                            <td class="money"><strong>@Fmt.Money(f.Calculo.Neto)</strong></td>
+                            <td class="money" data-col="rem">@Fmt.Money(f.Calculo.Remunerativo)</td>
+                            <td class="money" data-col="desc">@Fmt.Money(f.Calculo.Descuentos)</td>
+                            <td class="money" data-col="neto"><strong>@Fmt.Money(f.Calculo.Neto)</strong></td>
                             <td>
                                 @if (f.EnLiquidacion)
                                 {
@@ -100,3 +115,42 @@
         </div>
     </form>
 </section>
+
+@section Scripts {
+<script>
+// Recálculo en vivo: al editar novedades se pide el cálculo al servidor (sin guardar) y se actualizan los importes.
+(function () {
+  if (@(Model.Cerrada ? "true" : "false")) return;
+  var form = document.querySelector('main form[method="post"]');
+  if (!form || !window.fetch || !window.FormData) return;
+  var timer = null, seq = 0;
+
+  function recalcular() {
+    var mine = ++seq;
+    fetch(location.pathname + '?handler=Calcular', { method: 'POST', body: new FormData(form) })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || d.cerrada || mine !== seq) return;
+        (d.filas || []).forEach(function (f) {
+          var tr = form.querySelector('tr[data-emp="' + f.id + '"]');
+          if (!tr) return;
+          var rem = tr.querySelector('[data-col="rem"]'), desc = tr.querySelector('[data-col="desc"]'), neto = tr.querySelector('[data-col="neto"] strong');
+          if (rem) rem.textContent = f.rem;
+          if (desc) desc.textContent = f.desc;
+          if (neto) neto.textContent = f.neto;
+        });
+        var t = d.totales || {};
+        ['empleados', 'rem', 'desc', 'neto'].forEach(function (k) {
+          var el = document.querySelector('[data-total="' + k + '"]');
+          if (el && t[k] !== undefined) el.textContent = t[k];
+        });
+      })
+      .catch(function () { /* si falla, el cálculo se actualiza igual al guardar */ });
+  }
+
+  function programar() { clearTimeout(timer); timer = setTimeout(recalcular, 350); }
+  form.addEventListener('input', programar);
+  form.addEventListener('change', programar);
+})();
+</script>
+}

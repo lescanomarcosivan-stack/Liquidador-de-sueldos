@@ -111,6 +111,27 @@ public class EditarModel(AppDbContext db, ITenantContext tenant, IAuditoria audi
             e.EmpresaId == empresaId && e.Legajo == legajo && e.Id != (Input.Id ?? Guid.Empty));
         if (existeLegajo) ModelState.AddModelError("", $"Ya existe un empleado con el legajo {legajo} en esta empresa.");
 
+        // Datos personales y laborales: se rechazan valores absurdos en lugar de corregirlos en silencio.
+        var hoy = Fmt.HoyAr();
+        if (!string.IsNullOrWhiteSpace(Input.Dni) &&
+            !System.Text.RegularExpressions.Regex.IsMatch(Input.Dni.Trim().Replace(".", ""), @"^\d{6,9}$"))
+            ModelState.AddModelError("", "El DNI debe tener entre 6 y 9 números (sin letras).");
+        if (Input.Basico < 0)
+            ModelState.AddModelError("", "El sueldo básico propio no puede ser negativo.");
+        if (Input.HorasSemanales < 1 || Input.HorasSemanales > 60)
+            ModelState.AddModelError("", "Las horas semanales deben estar entre 1 y 60.");
+        if (Input.FechaNacimiento is { } nac && (nac < new DateOnly(1900, 1, 1) || nac > hoy.AddYears(-14)))
+            ModelState.AddModelError("", "La fecha de nacimiento no es válida (el empleado debe tener al menos 14 años).");
+        if (Input.FechaIngreso is { } ing)
+        {
+            if (ing < new DateOnly(1950, 1, 1) || ing > hoy.AddDays(31))
+                ModelState.AddModelError("", "La fecha de ingreso no es válida (no puede ser anterior a 1950 ni más de 31 días en el futuro).");
+            if (Input.FechaEgreso is { } egr && egr < ing)
+                ModelState.AddModelError("", "La fecha de egreso no puede ser anterior a la de ingreso.");
+            if (Input.FechaNacimiento is { } nac2 && ing < nac2.AddYears(14))
+                ModelState.AddModelError("", "La fecha de ingreso es anterior a los 14 años del empleado.");
+        }
+
         if (!ModelState.IsValid) return Page();
 
         Empleado e;

@@ -25,7 +25,7 @@
         <div class="full"><span>Empleado</span><strong>@vm.Empleado.Nombre</strong></div>
         <div><span>CUIL</span><strong>@(string.IsNullOrWhiteSpace(vm.Empleado.Cuil) ? "—" : vm.Empleado.Cuil)</strong></div>
         <div><span>Legajo</span><strong>@(string.IsNullOrWhiteSpace(vm.Empleado.Legajo) ? "—" : vm.Empleado.Legajo)</strong></div>
-        <div><span>Ingreso / antig.</span><strong>@ingreso · @c.Anios años</strong></div>
+        <div><span>Ingreso / antig.</span><strong>@ingreso · @c.Anios año@(c.Anios == 1 ? "" : "s")</strong></div>
         <div><span>Convenio / categoría</span><strong>@(string.IsNullOrWhiteSpace(vm.Convenio) ? "—" : vm.Convenio) · @(string.IsNullOrWhiteSpace(vm.Categoria) ? "—" : vm.Categoria)</strong></div>
     </div>
 
@@ -37,7 +37,7 @@
             <tbody>
                 <tr class="section-row"><td colspan="3">Aportes del trabajador (retenidos del bruto)</td></tr>
                 @foreach (var r in vm.Aportes()) { <tr><td>@r.Nombre</td><td class="money">@Fmt.Pct(r.Alicuota)</td><td class="money">@Fmt.Money(r.Valor)</td></tr> }
-                @if (vm.Aportes().Count == 0) { <tr><td colspan="3">Sin aportes</td></tr> }
+                @if (vm.Aportes().Count == 0) { <tr><td colspan="3">@(vm.Convenio == "Sin convenio" ? "Sin aportes: el empleado no tiene convenio asignado" : "Sin aportes")</td></tr> }
                 <tr class="section-row patronal"><td colspan="3">Contribuciones del empleador (costo adicional, no se descuenta)</td></tr>
                 @foreach (var r in vm.Patronales()) { <tr><td>@r.Nombre</td><td class="money">@Fmt.Pct(r.Alicuota)</td><td class="money">@Fmt.Money(r.Valor)</td></tr> }
                 @if (vm.Patronales().Count == 0) { <tr><td colspan="3">Sin contribuciones cargadas</td></tr> }

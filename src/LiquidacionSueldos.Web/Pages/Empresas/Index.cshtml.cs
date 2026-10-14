@@ -19,10 +19,15 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
         public string? Lugar { get; set; }
         public string? Leyenda { get; set; } = "Recibo de haberes";
         // En porcentaje (19 = 19 %)
+        [Display(Name = "Jubilación patronal"), Range(0, 100, ErrorMessage = "{0} debe estar entre {1} y {2} %.")]
         public decimal JubilacionPatronal { get; set; } = 19m;
+        [Display(Name = "Obra social patronal"), Range(0, 100, ErrorMessage = "{0} debe estar entre {1} y {2} %.")]
         public decimal ObraSocialPatronal { get; set; } = 6m;
+        [Display(Name = "ART"), Range(0, 100, ErrorMessage = "{0} debe estar entre {1} y {2} %.")]
         public decimal Art { get; set; } = 3m;
+        [Display(Name = "Asignaciones familiares"), Range(0, 100, ErrorMessage = "{0} debe estar entre {1} y {2} %.")]
         public decimal AsignacionesFamiliares { get; set; } = 5.6m;
+        [Display(Name = "Aporte sindical patronal"), Range(0, 100, ErrorMessage = "{0} debe estar entre {1} y {2} %.")]
         public decimal SindicalPatronal { get; set; }
     }
 
@@ -77,6 +82,13 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
         }
 
         var cuit = Domain.Cuit.Formatear(Input.Cuit);
+        var idActual = Input.Id ?? Guid.Empty;
+        var repetida = await db.Empresas.Where(x => x.Cuit == cuit && x.Id != idActual).Select(x => x.RazonSocial).FirstOrDefaultAsync();
+        if (repetida != null)
+        {
+            ModelState.AddModelError("", $"Ya existe una empresa con el CUIT {cuit} en este estudio ({repetida}).");
+            await CargarAsync(); return Page();
+        }
         Empresa e;
         var nueva = !Input.Id.HasValue;
         if (nueva)

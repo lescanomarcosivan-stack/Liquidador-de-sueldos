@@ -34,7 +34,8 @@
                     <select asp-for="Input.ConvenioId" id="emp-convenio">
                         <option value="">— Sin convenio —</option>
                         @foreach (var c in Model.Convenios) { <option value="@c.Id">@c.Nombre</option> }
-                    </select></div>
+                    </select>
+                    <p class="hint">Sin convenio solo se liquida el básico propio: no se calculan antigüedad, presentismo ni aportes del trabajador.</p></div>
                 <div class="field wide"><label>Categoría</label>
                     <select asp-for="Input.CategoriaSel" id="emp-categoria">
                         <option value="" data-convenio="">— Sin categoría —</option>

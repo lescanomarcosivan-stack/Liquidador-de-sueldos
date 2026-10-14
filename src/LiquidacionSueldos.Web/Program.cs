@@ -62,7 +62,16 @@ builder.Services.AddRazorPages(o =>
     o.Conventions.AllowAnonymousToPage("/Error");
     o.Conventions.AuthorizeFolder("/Usuarios", "Admin");
 })
-.AddMvcOptions(o => o.Filters.Add<EmpresaRequeridaFilter>());
+.AddMvcOptions(o =>
+{
+    o.Filters.Add<EmpresaRequeridaFilter>();
+    // Mensajes de validación de números/valores en español (por defecto salen en inglés).
+    var m = o.ModelBindingMessageProvider;
+    m.SetValueMustBeANumberAccessor(campo => $"El campo {campo} debe ser un número.");
+    m.SetAttemptedValueIsInvalidAccessor((valor, campo) => $"El valor '{valor}' no es válido para {campo}.");
+    m.SetValueIsInvalidAccessor(valor => $"El valor '{valor}' no es válido.");
+    m.SetMissingBindRequiredValueAccessor(campo => $"Falta el valor de {campo}.");
+});
 
 var app = builder.Build();
 

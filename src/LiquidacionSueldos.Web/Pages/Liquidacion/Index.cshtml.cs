@@ -36,6 +36,16 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, LiquidacionServi
     public decimal TotalNeto => Filas.Where(f => f.Input.Seleccionado).Sum(f => f.Calculo.Neto);
     public int TotalEmpleados => Filas.Count(f => f.Input.Seleccionado);
 
+    /// <summary>Empleados incluidos cuyo neto da negativo (no se puede cerrar así).</summary>
+    public List<string> NetoNegativo => Filas
+        .Where(f => f.Input.Seleccionado && f.Calculo.Neto < 0)
+        .Select(f => f.Empleado.NombreCompleto).ToList();
+
+    /// <summary>Empleados incluidos que no tienen convenio: se liquidan sin antigüedad, presentismo ni aportes.</summary>
+    public List<string> SinConvenio => Filas
+        .Where(f => f.Input.Seleccionado && f.Empleado.ConvenioId == null)
+        .Select(f => f.Empleado.NombreCompleto).ToList();
+
     private void Normalizar()
     {
         if (!CalculoSueldos.TryParsePeriodo(Periodo, out _)) Periodo = Fmt.PeriodoActual();
@@ -90,9 +100,58 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, LiquidacionServi
         return d;
     }
 
+    /// <summary>Recalcula sin guardar: la pantalla lo llama (fetch) al editar novedades para actualizar los importes en vivo.</summary>
+    public async Task<IActionResult> OnPostCalcularAsync()
+    {
+        Normalizar();
+        var liq = await svc.BuscarVigenteAsync(Periodo, Tipo);
+        if (liq is { EstaCerrada: true }) return new JsonResult(new { cerrada = true });
+
+        var conceptos = await svc.ConceptosAsync();
+        var empleados = (await svc.EmpleadosActivosAsync()).ToDictionary(e => e.Id);
+        if (liq != null)
+            foreach (var l in liq.Lineas.Where(l => l.Empleado != null && !empleados.ContainsKey(l.EmpleadoId)))
+                empleados[l.EmpleadoId] = l.Empleado!;
+
+        var filas = new List<object>();
+        decimal rem = 0m, desc = 0m, neto = 0m;
+        var cantidad = 0;
+        foreach (var input in Lineas)
+        {
+            if (!empleados.TryGetValue(input.EmpleadoId, out var e)) continue;
+            var previa = liq?.Lineas.FirstOrDefault(x => x.EmpleadoId == input.EmpleadoId);
+            var tmp = new LiquidacionLinea
+            {
+                EmpleadoId = input.EmpleadoId, Seleccionado = input.Seleccionado, Dias = input.Dias,
+                Ausencias = input.Ausencias, He50 = input.He50, He100 = input.He100,
+                OtrosDescuentos = input.OtrosDescuentos, NoRemunerativo = input.NoRemunerativo,
+                ConceptosJson = previa?.ConceptosJson
+            };
+            var c = LiquidacionService.CalcularLive(e, tmp, Periodo, conceptos);
+            if (input.Seleccionado) { rem += c.Remunerativo; desc += c.Descuentos; neto += c.Neto; cantidad++; }
+            filas.Add(new { id = input.EmpleadoId, rem = Fmt.Money(c.Remunerativo), desc = Fmt.Money(c.Descuentos), neto = Fmt.Money(c.Neto) });
+        }
+        return new JsonResult(new
+        {
+            filas,
+            totales = new { empleados = cantidad, rem = Fmt.Money(rem), desc = Fmt.Money(desc), neto = Fmt.Money(neto) }
+        });
+    }
+
+    /// <summary>Mensaje si algún campo de las novedades no es un número válido (letras, vacío, etc.); null si todo está bien.</summary>
+    private string? ErrorDeLineas()
+    {
+        var malos = ModelState
+            .Where(kv => kv.Key.StartsWith("Lineas", StringComparison.Ordinal) && kv.Value?.Errors.Count > 0)
+            .Select(kv => kv.Key).ToList();
+        return malos.Count == 0 ? null
+            : "No se guardó: hay campos de novedades vacíos o con texto en lugar de números. Usá solo números (decimales con punto).";
+    }
+
     public async Task<IActionResult> OnPostGuardarAsync()
     {
         Normalizar();
+        if (ErrorDeLineas() is { } errLineas) { Error = errLineas; return RedirectToPage(new { Periodo, Tipo }); }
         if (FechaPago == default) FechaPago = UltimoDiaHabil(Periodo);
         var (_, error) = await svc.GuardarBorradorAsync(Periodo, Tipo, FechaPago, Lineas);
         if (error != null) Error = error; else Ok = "Borrador guardado.";
@@ -102,6 +161,7 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, LiquidacionServi
     public async Task<IActionResult> OnPostCerrarAsync()
     {
         Normalizar();
+        if (ErrorDeLineas() is { } errLineas) { Error = errLineas; return RedirectToPage(new { Periodo, Tipo }); }
         if (FechaPago == default) FechaPago = UltimoDiaHabil(Periodo);
         var (liq, error) = await svc.GuardarBorradorAsync(Periodo, Tipo, FechaPago, Lineas);
         if (error == null && liq != null) error = await svc.CerrarAsync(liq);

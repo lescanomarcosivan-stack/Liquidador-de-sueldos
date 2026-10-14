@@ -733,3 +733,10 @@ a.btn-primary,a.btn-secondary,a.btn-small{display:inline-block;text-decoration:n
 .guia pre.codeblock{background:#12233f;color:#dbe6f7;border-radius:7px;padding:14px 16px;overflow:auto;font-size:12px;line-height:1.5;}
 .guia li{margin-bottom:5px;line-height:1.5;}
 .guia p{line-height:1.55;}
+
+/* ---- Resumen por conceptos ---- */
+.resumen-table td.money,.resumen-table th.money{text-align:right;white-space:nowrap;}
+.resumen-table tr.resumen-sec td{background:#eef1f6;font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#12233f;padding-top:10px;}
+.resumen-table tr.resumen-sub td{font-weight:700;border-top:1px solid #c9d0dc;}
+.resumen-table tr.resumen-tot td{font-weight:800;background:#12233f;color:#fff;}
+@media print{ .resumen-table tr.resumen-sec td,.resumen-table tr.resumen-tot td{-webkit-print-color-adjust:exact;print-color-adjust:exact;} }

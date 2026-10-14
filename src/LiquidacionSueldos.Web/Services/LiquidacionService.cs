@@ -23,6 +23,9 @@ public class LiquidacionService(AppDbContext db, ITenantContext tenant, IAuditor
 {
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
 
+    /// <summary>Tope de horas extra (50 % + 100 %) por empleado y por liquidación.</summary>
+    public const decimal MaxHorasExtraMes = 250m;
+
     // ---------------- Utilidades de cálculo ----------------
 
     public async Task<List<ConceptoCalc>> ConceptosAsync()
@@ -110,7 +113,27 @@ public class LiquidacionService(AppDbContext db, ITenantContext tenant, IAuditor
         if (liq is { EstaCerrada: true })
             return (null, "La liquidación está cerrada y no se puede modificar. Creá una rectificativa para corregirla.");
 
-        var idsValidos = (await db.Empleados.Where(e => e.EmpresaId == empresaId).Select(e => e.Id).ToListAsync()).ToHashSet();
+        var nombres = await db.Empleados.Where(e => e.EmpresaId == empresaId)
+            .Select(e => new { e.Id, e.Apellido, e.Nombre }).ToDictionaryAsync(e => e.Id, e => string.IsNullOrWhiteSpace(e.Nombre) ? e.Apellido : e.Apellido + ", " + e.Nombre);
+        var idsValidos = nombres.Keys.ToHashSet();
+
+        // Validación: se rechazan los valores absurdos en vez de corregirlos en silencio.
+        var problemas = new List<string>();
+        foreach (var inp in inputs.Where(i => idsValidos.Contains(i.EmpleadoId) && i.Seleccionado))
+        {
+            var quien = nombres[inp.EmpleadoId];
+            var errs = new List<string>();
+            if (inp.Dias < 0 || inp.Dias > 31) errs.Add("los días deben estar entre 0 y 31");
+            if (inp.Ausencias < 0) errs.Add("las ausencias no pueden ser negativas");
+            else if (inp.Ausencias > inp.Dias) errs.Add("las ausencias superan los días trabajados");
+            if (inp.He50 < 0 || inp.He100 < 0) errs.Add("las horas extra no pueden ser negativas");
+            else if (inp.He50 + inp.He100 > MaxHorasExtraMes) errs.Add($"las horas extra superan el máximo razonable ({MaxHorasExtraMes} h por mes)");
+            if (inp.OtrosDescuentos < 0) errs.Add("otros descuentos no puede ser negativo");
+            if (inp.NoRemunerativo < 0) errs.Add("no remunerativo no puede ser negativo");
+            if (errs.Count > 0) problemas.Add($"{quien}: {string.Join(", ", errs)}.");
+        }
+        if (problemas.Count > 0)
+            return (null, "No se guardó. Corregí estos datos: " + string.Join(" ", problemas));
 
         var esNueva = liq == null;
         if (liq == null)
@@ -172,6 +195,14 @@ public class LiquidacionService(AppDbContext db, ITenantContext tenant, IAuditor
         if (empresa == null) return "No se encontró la empresa de la liquidación.";
 
         var conceptos = await ConceptosAsync();
+
+        var netoNegativo = seleccionadas
+            .Where(l => l.Empleado != null && CalcularLive(l.Empleado, l, liq.Periodo, conceptos).Neto < 0)
+            .Select(l => l.Empleado!.NombreCompleto).ToList();
+        if (netoNegativo.Count > 0)
+            return "No se puede cerrar: estos empleados quedan con neto negativo (revisá descuentos y novedades): "
+                   + string.Join("; ", netoNegativo);
+
         var empleador = new SnapshotEmpleador
         {
             RazonSocial = empresa.RazonSocial, Cuit = empresa.Cuit, Domicilio = empresa.Domicilio,

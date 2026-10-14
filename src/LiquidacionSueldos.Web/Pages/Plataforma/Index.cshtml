@@ -1,0 +1,42 @@
+@page
+@model LiquidacionSueldos.Web.Pages.Plataforma.IndexModel
+@{ ViewData["Title"] = "Plataforma"; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Plataforma · estudios y planes</h1>
+        <p>Todos los estudios que usan el sistema. Cambiá el plan de cada uno según lo que contrate.</p>
+    </div>
+    <partial name="_Alert" model="(Model.Ok, Model.Error)" />
+
+    <div class="panel">
+        <table class="table-simple">
+            <thead><tr><th>Estudio</th><th>Alta</th><th class="money">Empresas</th><th class="money">Empleados</th><th class="money">Usuarios</th><th>Plan</th></tr></thead>
+            <tbody>
+            @foreach (var e in Model.Estudios)
+            {
+                var plan = Planes.Obtener(e.Plan);
+                <tr>
+                    <td>@e.Nombre</td>
+                    <td>@e.CreadoEn.ToString("dd/MM/yyyy")</td>
+                    <td class="money">@e.Empresas / @Planes.Etiqueta(plan.MaxEmpresas)</td>
+                    <td class="money">@e.Empleados / @Planes.Etiqueta(plan.MaxEmpleados)</td>
+                    <td class="money">@e.Usuarios / @Planes.Etiqueta(plan.MaxUsuarios)</td>
+                    <td>
+                        <form method="post" asp-page-handler="Plan" asp-route-id="@e.Id" class="inline-form">
+                            <select name="plan">
+                                @foreach (var p in Planes.Todos)
+                                {
+                                    <option value="@p.Codigo" selected="@(p.Codigo == plan.Codigo)">@p.Nombre</option>
+                                }
+                            </select>
+                            <button class="btn-small" type="submit">Guardar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Estudios.Count == 0) { <tr><td colspan="6" class="hint">Todavía no hay estudios.</td></tr> }
+            </tbody>
+        </table>
+        <p class="hint">Los topes de cada plan están definidos en el código (Domain/Planes.cs). Las empresas cuentan todas; empleados y usuarios, solo los activos.</p>
+    </div>
+</section>

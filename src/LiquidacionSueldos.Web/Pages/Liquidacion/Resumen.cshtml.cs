@@ -75,7 +75,7 @@ public class ResumenModel(AppDbContext db, ITenantContext tenant, LiquidacionSer
         EmpresaNombre = empresa?.RazonSocial ?? "";
         if (empresa == null) return;
 
-        var delPeriodo = await svc.ConLineas()
+        var delPeriodo = await svc.ConLineas().AsNoTracking()
             .Where(x => x.EmpresaId == empresaId && x.Periodo == Periodo)
             .ToListAsync();
         // Por cada tipo se toma la última versión (la rectificativa reemplaza a la original).

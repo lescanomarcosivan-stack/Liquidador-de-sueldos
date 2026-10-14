@@ -6,16 +6,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LiquidacionSueldos.Web.Pages;
 
-public class IndexModel(AppDbContext db, ITenantContext tenant) : PageModel
+public class IndexModel(AppDbContext db, ITenantContext tenant, PlanService planes) : PageModel
 {
     public Empresa? Empresa { get; set; }
     public int Empleados { get; set; }
     public int Convenios { get; set; }
     public int Cerradas { get; set; }
     public int Borradores { get; set; }
+    public UsoPlan? Plan { get; set; }
 
     public async Task OnGetAsync()
     {
+        Plan = await planes.UsoAsync();
         var id = tenant.EmpresaId;
         if (id == null) return;
         Empresa = await db.Empresas.FirstOrDefaultAsync(e => e.Id == id.Value);

@@ -7,6 +7,13 @@
         <p>@(Model.Empresa?.RazonSocial ?? "Sin empresa activa")</p>
     </div>
 
+    @if (Model.Plan is { } uso)
+    {
+        <div class="panel liq-panel" style="margin-bottom:14px;">
+            <span class="hint"><strong>Plan @uso.Plan.Nombre</strong> · Empresas @uso.Empresas / @Planes.Etiqueta(uso.Plan.MaxEmpresas) · Empleados activos @uso.Empleados / @Planes.Etiqueta(uso.Plan.MaxEmpleados) · Usuarios @uso.Usuarios / @Planes.Etiqueta(uso.Plan.MaxUsuarios)</span>
+        </div>
+    }
+
     @if (Model.Empresa == null)
     {
         <div class="alert warn">No hay una empresa activa. <a asp-page="/SinEmpresa">Elegí o creá una</a> para empezar.</div>

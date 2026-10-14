@@ -13,6 +13,10 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
     public string EmpresaNombre { get; set; } = "";
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
     [BindProperty(SupportsGet = true)] public bool Inactivos { get; set; }
+    [BindProperty(SupportsGet = true)] public int Pagina { get; set; } = 1;
+    public const int PorPagina = 50;
+    public int Total { get; set; }
+    public int TotalPaginas { get; set; } = 1;
     [TempData] public string? Ok { get; set; }
     [TempData] public string? Error { get; set; }
 
@@ -28,7 +32,13 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
             q = q.Where(e => e.Apellido.ToLower().Contains(t) || e.Nombre.ToLower().Contains(t) ||
                              e.Legajo.ToLower().Contains(t) || e.Cuil.Contains(t));
         }
-        Lista = await q.OrderBy(e => e.Apellido).ThenBy(e => e.Nombre).ToListAsync();
+        Total = await q.CountAsync();
+        TotalPaginas = Math.Max(1, (int)Math.Ceiling(Total / (double)PorPagina));
+        Pagina = Math.Clamp(Pagina, 1, TotalPaginas);
+        Lista = await q.AsNoTracking()
+            .OrderBy(e => e.Apellido).ThenBy(e => e.Nombre).ThenBy(e => e.Id)
+            .Skip((Pagina - 1) * PorPagina).Take(PorPagina)
+            .ToListAsync();
     }
 
     public async Task<IActionResult> OnPostEliminarAsync(Guid id)

@@ -42,4 +42,16 @@
             </tbody>
         </table>
     </div>
+    @if (Model.TotalPaginas > 1)
+    {
+        <div class="page-actions" style="margin-top:10px;">
+            @if (Model.Pagina > 1) { <a class="btn-secondary" asp-page="Index" asp-route-q="@Model.Q" asp-route-inactivos="@Model.Inactivos" asp-route-pagina="@(Model.Pagina - 1)">← Anterior</a> }
+            <span class="hint">Página @Model.Pagina de @Model.TotalPaginas · @Model.Total empleados</span>
+            @if (Model.Pagina < Model.TotalPaginas) { <a class="btn-secondary" asp-page="Index" asp-route-q="@Model.Q" asp-route-inactivos="@Model.Inactivos" asp-route-pagina="@(Model.Pagina + 1)">Siguiente →</a> }
+        </div>
+    }
+    else if (Model.Total > 0)
+    {
+        <p class="hint">@Model.Total @(Model.Total == 1 ? "empleado" : "empleados")</p>
+    }
 </section>

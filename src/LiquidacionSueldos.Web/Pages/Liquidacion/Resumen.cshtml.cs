@@ -1,6 +1,7 @@
 using LiquidacionSueldos.Web.Data;
 using LiquidacionSueldos.Web.Domain;
 using LiquidacionSueldos.Web.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 

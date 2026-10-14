@@ -16,7 +16,7 @@ public class UsuarioFila
     public string Rol { get; set; } = Roles.Operador;
 }
 
-public class IndexModel(UserManager<ApplicationUser> users, ITenantContext tenant, IAuditoria audit, AppDbContext db) : PageModel
+public class IndexModel(UserManager<ApplicationUser> users, ITenantContext tenant, IAuditoria audit, AppDbContext db, PlanService plan) : PageModel
 {
     public class NuevoUsuario
     {
@@ -58,6 +58,11 @@ public class IndexModel(UserManager<ApplicationUser> users, ITenantContext tenan
         if (await users.FindByEmailAsync(email) != null)
         {
             ModelState.AddModelError("", "Ya existe un usuario con ese email.");
+            await CargarAsync(); return Page();
+        }
+        if (await plan.ValidarAltaAsync(Recurso.Usuarios) is { } limite)
+        {
+            ModelState.AddModelError("", limite);
             await CargarAsync(); return Page();
         }
         var rol = Input.Rol == Roles.Admin ? Roles.Admin : Roles.Operador;
@@ -107,6 +112,11 @@ public class IndexModel(UserManager<ApplicationUser> users, ITenantContext tenan
         if (u.Activo && await users.IsInRoleAsync(u, Roles.Admin) && await AdminsActivosAsync() <= 1)
         {
             Error = "Debe quedar al menos un Administrador activo.";
+            return RedirectToPage();
+        }
+        if (!u.Activo && await plan.ValidarAltaAsync(Recurso.Usuarios) is { } limite)
+        {
+            Error = limite;
             return RedirectToPage();
         }
         u.Activo = !u.Activo;

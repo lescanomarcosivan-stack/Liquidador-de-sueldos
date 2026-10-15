@@ -27,6 +27,20 @@ public class ConceptoCalc
     public string Nombre { get; set; } = "";
     public string Tipo { get; set; } = "haber";
     public bool Remunerativo { get; set; } = true;
+    /// <summary>"fijo", "pctBasico", "pctHaberes", "pctRemunerativo", "pctNoRemunerativo" o "pctBruto".</summary>
+    public string Calculo { get; set; } = "fijo";
+    public decimal Valor { get; set; }
+    /// <summary>Si es true, no se aplica a nadie salvo a los empleados a los que se agregó a mano.</summary>
+    public bool Manual { get; set; }
+
+    /// <summary>Descuentos que se calculan sobre el total ya armado (remunerativo, no remunerativo o bruto), por eso van en una segunda pasada.</summary>
+    public bool SobreTotales => Calculo is "pctRemunerativo" or "pctNoRemunerativo" or "pctBruto";
+}
+
+/// <summary>Concepto agregado a mano a un empleado, con la base y el valor elegidos para él.</summary>
+public class AgregadoCalc
+{
+    public string Id { get; set; } = "";
     public string Calculo { get; set; } = "fijo";
     public decimal Valor { get; set; }
 }
@@ -41,6 +55,8 @@ public class NovedadesCalc
     public decimal NoRemunerativo { get; set; }
     /// <summary>Importes que reemplazan el valor automático de un concepto (clave = Id del concepto).</summary>
     public Dictionary<string, decimal> Overrides { get; set; } = new();
+    /// <summary>Conceptos agregados a mano a este empleado (clave = Id del concepto); su base y valor reemplazan a los del concepto.</summary>
+    public Dictionary<string, AgregadoCalc> Agregados { get; set; } = new();
 }
 
 public class ConceptoLinea
@@ -144,7 +160,9 @@ public static class CalculoSueldos
         bool afiliadoSindicato,
         ParametrosConvenio p,
         IEnumerable<ConceptoCalc> conceptos,
-        NovedadesCalc n)
+        NovedadesCalc n,
+        bool obraSocialSobreNoRem = false,
+        decimal? obraSocialPorcentaje = null)
     {
         var dias = Math.Max(0m, Math.Min(31m, n.Dias));
         var aus = Math.Max(0m, n.Ausencias);
@@ -168,16 +186,26 @@ public static class CalculoSueldos
 
         decimal remExtras = 0m, noRemExtras = n.NoRemunerativo, descExtras = 0m;
         var filas = new List<ConceptoLinea>();
-        foreach (var con in conceptos)
-        {
-            var tieneOverride = n.Overrides.TryGetValue(con.Id, out var ov);
-            decimal valor;
-            if (tieneOverride) valor = R(ov);
-            else if (con.Calculo == "pctBasico") valor = R(basico * con.Valor);
-            else if (con.Calculo == "pctHaberes") valor = R(haberesBase * con.Valor);
-            else valor = R(con.Valor);
-            if (valor == 0m) continue;
 
+        // Conceptos que rigen para este empleado: los automáticos, los agregados a mano y los que tienen importe cargado.
+        // Si se agregó a mano con otra base o valor, se usan los elegidos para este empleado.
+        var aplicables = new List<(ConceptoCalc Con, bool Override)>();
+        foreach (var c in conceptos)
+        {
+            var conOverride = n.Overrides.ContainsKey(c.Id);
+            var agregado = n.Agregados.TryGetValue(c.Id, out var ag) ? ag : null;
+            if (c.Manual && agregado == null && !conOverride) continue;
+            var efectivo = agregado == null ? c : new ConceptoCalc
+            {
+                Id = c.Id, Nombre = c.Nombre, Tipo = c.Tipo, Remunerativo = c.Remunerativo, Manual = c.Manual,
+                Calculo = agregado.Calculo, Valor = agregado.Valor
+            };
+            aplicables.Add((efectivo, conOverride));
+        }
+
+        void Agregar(ConceptoCalc con, decimal valor, bool tieneOverride)
+        {
+            if (valor == 0m) return;
             if (con.Tipo == "descuento")
             {
                 descExtras += valor;
@@ -195,10 +223,34 @@ public static class CalculoSueldos
             }
         }
 
+        // 1ª pasada: importes fijos y porcentajes del básico / de haberes.
+        foreach (var (con, conOverride) in aplicables.Where(x => !x.Con.SobreTotales))
+        {
+            var tieneOverride = conOverride;
+            decimal valor;
+            if (tieneOverride) valor = R(n.Overrides[con.Id]);
+            else if (con.Calculo == "pctBasico") valor = R(basico * con.Valor);
+            else if (con.Calculo == "pctHaberes") valor = R(haberesBase * con.Valor);
+            else valor = R(con.Valor);
+            Agregar(con, valor, tieneOverride);
+        }
+
+        // 2ª pasada: descuentos sobre el total remunerativo, el no remunerativo o el bruto (remunerativo + no remunerativo).
+        // Se calculan al final porque dependen de todos los haberes; un haber nunca puede depender de ellos.
+        var totalRemunerativo = haberesBase + remExtras;
+        var totalNoRem = noRemExtras;
+        var totalBruto = totalRemunerativo + totalNoRem;
+        foreach (var (con, conOverride) in aplicables.Where(x => x.Con.SobreTotales))
+        {
+            if (!conOverride && con.Tipo != "descuento") continue;
+            var baseCalculo = con.Calculo switch { "pctRemunerativo" => totalRemunerativo, "pctNoRemunerativo" => totalNoRem, _ => totalBruto };
+            Agregar(con, conOverride ? R(n.Overrides[con.Id]) : R(baseCalculo * con.Valor), conOverride);
+        }
+
         var remunerativo = haberesBase + remExtras;
         var jubilacion = R(remunerativo * p.Jubilacion);
         var inssjp = R(remunerativo * p.Inssjp);
-        var obraSocial = R(remunerativo * p.ObraSocial);
+        var obraSocial = R((obraSocialSobreNoRem ? remunerativo + noRemExtras : remunerativo) * (obraSocialPorcentaje ?? p.ObraSocial));
         var sindicato = afiliadoSindicato ? R(remunerativo * p.Sindicato) : 0m;
         var otros = R(n.OtrosDescuentos);
         var descuentos = jubilacion + inssjp + obraSocial + sindicato + otros + descExtras;

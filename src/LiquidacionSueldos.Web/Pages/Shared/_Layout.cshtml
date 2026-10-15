@@ -1,6 +1,7 @@
 @inject ITenantContext Tenant
 @inject LiquidacionSueldos.Web.Data.AppDbContext Db
 @inject IConfiguration Config
+@inject PlanService PlanSvc
 @using Microsoft.EntityFrameworkCore
 @{
     var empresas = await Db.Empresas.OrderBy(e => e.RazonSocial).Select(e => new { e.Id, e.RazonSocial }).ToListAsync();
@@ -8,6 +9,7 @@
     var path = (ViewContext.RouteData.Values["page"] as string ?? "").Trim('/').ToLowerInvariant();
     string Act(string p) => p == "" ? (path == "index" ? "active" : "") : (path == p || path.StartsWith(p + "/") ? "active" : "");
     var bodyClass = ViewData["BodyClass"] as string ?? "";
+    var prueba = await PlanSvc.PruebaAsync();
 }
 <!DOCTYPE html>
 <html lang="es">
@@ -80,6 +82,20 @@
         <a class="nav-btn @Act("guia")" asp-page="/Guia/Index"><span class="num">?</span> Guía de estudio</a>
     </nav>
 </header>
+@if (prueba.EnPrueba)
+{
+    <div class="trial-strip @(prueba.Vencida ? "vencida" : "")">
+        @if (prueba.Vencida)
+        {
+            <span>Tu prueba gratuita terminó: el sistema está en solo lectura.</span>
+            <a asp-page="/PruebaVencida">Cómo contratar un plan</a>
+        }
+        else
+        {
+            <span>Prueba gratuita: te @(prueba.DiasRestantes == 1 ? "queda 1 día" : $"quedan {prueba.DiasRestantes} días") (vence el @Fmt.FechaHora(prueba.Vence!.Value)).</span>
+        }
+    </div>
+}
 <main>
     @RenderBody()
 </main>

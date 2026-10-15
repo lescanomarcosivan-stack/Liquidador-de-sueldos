@@ -36,6 +36,9 @@ public class EditarModel(AppDbContext db, ITenantContext tenant, IAuditoria audi
         public string? ObraSocial { get; set; }
         public string? Banco { get; set; }
         public bool AfiliadoSindicato { get; set; } = true;
+        public bool ObraSocialSobreNoRem { get; set; }
+        /// <summary>Porcentaje propio de obra social (6 = 6 %); vacío = el del convenio.</summary>
+        public decimal? ObraSocialPorcentaje { get; set; }
         public bool Activo { get; set; } = true;
         public string? Observaciones { get; set; }
     }
@@ -67,7 +70,7 @@ public class EditarModel(AppDbContext db, ITenantContext tenant, IAuditoria audi
                 CategoriaSel = e.CategoriaId?.ToString(), Puesto = e.Puesto, FechaIngreso = e.FechaIngreso,
                 FechaEgreso = e.FechaEgreso, Modalidad = e.Modalidad, Jornada = e.Jornada,
                 HorasSemanales = Fmt.Limpio(e.HorasSemanales), Basico = Fmt.Limpio(e.Basico), ObraSocial = e.ObraSocial, Banco = e.Banco,
-                AfiliadoSindicato = e.AfiliadoSindicato, Activo = e.Activo, Observaciones = e.Observaciones
+                AfiliadoSindicato = e.AfiliadoSindicato, ObraSocialSobreNoRem = e.ObraSocialSobreNoRem, ObraSocialPorcentaje = e.ObraSocialPorcentaje is { } pc ? Fmt.Limpio(pc * 100m) : null, Activo = e.Activo, Observaciones = e.Observaciones
             };
         }
         return Page();
@@ -189,6 +192,8 @@ public class EditarModel(AppDbContext db, ITenantContext tenant, IAuditoria audi
         e.ObraSocial = Input.ObraSocial?.Trim() ?? "";
         e.Banco = Input.Banco?.Trim() ?? "";
         e.AfiliadoSindicato = Input.AfiliadoSindicato;
+        e.ObraSocialSobreNoRem = Input.ObraSocialSobreNoRem;
+        e.ObraSocialPorcentaje = Input.ObraSocialPorcentaje is { } pj && pj > 0 ? Math.Round(Math.Min(pj, 100m) / 100m, 6) : null;
         e.Activo = Input.Activo;
         e.Observaciones = Input.Observaciones?.Trim() ?? "";
 

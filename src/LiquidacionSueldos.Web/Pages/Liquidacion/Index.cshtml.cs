@@ -125,7 +125,8 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, LiquidacionServi
                 EmpleadoId = input.EmpleadoId, Seleccionado = input.Seleccionado, Dias = input.Dias,
                 Ausencias = input.Ausencias, He50 = input.He50, He100 = input.He100,
                 OtrosDescuentos = input.OtrosDescuentos, NoRemunerativo = input.NoRemunerativo,
-                ConceptosJson = previa?.ConceptosJson
+                ConceptosJson = previa?.ConceptosJson,
+                ConceptosAgregadosJson = previa?.ConceptosAgregadosJson
             };
             var c = LiquidacionService.CalcularLive(e, tmp, Periodo, conceptos);
             if (input.Seleccionado) { rem += c.Remunerativo; desc += c.Descuentos; neto += c.Neto; cantidad++; }

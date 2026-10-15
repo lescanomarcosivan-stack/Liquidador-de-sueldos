@@ -49,23 +49,88 @@
 
             <div class="panel" style="margin-top:16px;">
                 <h3>Conceptos adicionales</h3>
-                <p class="hint">Dejá vacío para que se calcule automáticamente según la configuración del concepto. Un valor sobrescribe el importe de este empleado (0 lo quita del recibo).</p>
-                <form method="post">
-                    <input type="hidden" name="Periodo" value="@Model.Periodo" />
-                    <input type="hidden" name="Tipo" value="@Model.Tipo" />
-                    <input type="hidden" name="EmpleadoId" value="@Model.EmpleadoId" />
-                    @foreach (var k in Model.Conceptos)
+                <p class="hint">Los conceptos «a elección» se agregan acá, empleado por empleado, con la base de cálculo que necesites. Los automáticos ya se aplican a todos; podés fijarles un importe propio para este empleado (0 lo quita del recibo).</p>
+                @{
+                    string BaseTxt(string cal) => cal switch
                     {
-                        var ovTxt = Model.Overrides.TryGetValue(k.Id, out var ov) ? Fmt.Input(ov) : "";
-                        <div class="field" style="margin-bottom:10px;">
-                            <label>@k.Nombre (@(k.Tipo == "haber" ? (k.Remunerativo ? "haber remunerativo" : "haber no remunerativo") : "descuento"))</label>
-                            <input name="ov_@k.Id" type="number" step="0.01" min="0" readonly="@Model.Cerrada"
-                                   value="@ovTxt" />
+                        "pctBasico" => "% del básico", "pctHaberes" => "% de haberes", "pctRemunerativo" => "% del total remunerativo",
+                        "pctNoRemunerativo" => "% del total no remunerativo", "pctBruto" => "% del bruto (rem. + no rem.)", _ => "importe fijo"
+                    };
+                    var agregados = Model.Conceptos.Where(k => Model.Agregados.ContainsKey(k.Id)).ToList();
+                    var disponibles = Model.Conceptos.Where(k => k.Manual && !Model.Agregados.ContainsKey(k.Id)).ToList();
+                }
+                @if (agregados.Count > 0)
+                {
+                    <h4 style="margin:10px 0 6px;">Agregados a este empleado</h4>
+                    @foreach (var k in agregados)
+                    {
+                        var ag = Model.Agregados[k.Id];
+                        <div class="calc-row sub">
+                            <span>@k.Nombre · @BaseTxt(ag.Calculo) · @(ag.Calculo == "fijo" ? Fmt.Money(ag.Valor) : Fmt.Pct(ag.Valor))</span>
+                            @if (!Model.Cerrada)
+                            {
+                                <form method="post" asp-page-handler="Quitar" class="inline-form">
+                                    <input type="hidden" name="Periodo" value="@Model.Periodo" />
+                                    <input type="hidden" name="Tipo" value="@Model.Tipo" />
+                                    <input type="hidden" name="EmpleadoId" value="@Model.EmpleadoId" />
+                                    <input type="hidden" name="conceptoId" value="@k.Id" />
+                                    <button class="btn-small btn-danger-outline" type="submit">Quitar</button>
+                                </form>
+                            }
                         </div>
                     }
-                    @if (Model.Conceptos.Count == 0) { <p class="hint">No hay conceptos configurados.</p> }
-                    @if (!Model.Cerrada) { <button class="btn-primary" type="submit">Guardar conceptos</button> }
-                </form>
+                }
+                @if (!Model.Cerrada)
+                {
+                    <h4 style="margin:14px 0 6px;">Agregar un concepto</h4>
+                    @if (disponibles.Count == 0)
+                    {
+                        <p class="hint">No hay conceptos «a elección» disponibles. Creá uno en Conceptos y elegí «A elección: lo agrego empleado por empleado».</p>
+                    }
+                    else
+                    {
+                        <form method="post" asp-page-handler="Agregar">
+                            <input type="hidden" name="Periodo" value="@Model.Periodo" />
+                            <input type="hidden" name="Tipo" value="@Model.Tipo" />
+                            <input type="hidden" name="EmpleadoId" value="@Model.EmpleadoId" />
+                            <div class="field" style="margin-bottom:10px;"><label>Concepto</label>
+                                <select name="conceptoId">
+                                    @foreach (var k in disponibles) { <option value="@k.Id">@k.Nombre (@(k.Tipo == "haber" ? (k.Remunerativo ? "haber remunerativo" : "haber no remunerativo") : "descuento"))</option> }
+                                </select></div>
+                            <div class="field" style="margin-bottom:10px;"><label>Calcular sobre</label>
+                                <select name="calculo">
+                                    <option value="fijo">Importe fijo ($)</option>
+                                    <option value="pctBasico">% del sueldo básico</option>
+                                    <option value="pctHaberes">% de haberes (básico + antigüedad + presentismo + HE)</option>
+                                    <option value="pctRemunerativo">% del total remunerativo (solo descuentos)</option>
+                                    <option value="pctNoRemunerativo">% del total no remunerativo (solo descuentos)</option>
+                                    <option value="pctBruto">% del total bruto: remunerativo + no remunerativo (solo descuentos)</option>
+                                </select></div>
+                            <div class="field" style="margin-bottom:10px;"><label>Valor ($ si es fijo, % en los demás casos)</label>
+                                <input name="valor" type="number" step="any" min="0" required /></div>
+                            <button class="btn-primary" type="submit">Agregar a este empleado</button>
+                        </form>
+                    }
+                }
+
+                @if (Model.Conceptos.Any(k => !k.Manual))
+                {
+                    <h4 style="margin:18px 0 6px;">Conceptos automáticos (importe propio)</h4>
+                    <form method="post">
+                        <input type="hidden" name="Periodo" value="@Model.Periodo" />
+                        <input type="hidden" name="Tipo" value="@Model.Tipo" />
+                        <input type="hidden" name="EmpleadoId" value="@Model.EmpleadoId" />
+                        @foreach (var k in Model.Conceptos.Where(k => !k.Manual))
+                        {
+                            var ovTxt = Model.Overrides.TryGetValue(k.Id, out var ov) ? Fmt.Input(ov) : "";
+                            <div class="field" style="margin-bottom:10px;">
+                                <label>@k.Nombre (@(k.Tipo == "haber" ? (k.Remunerativo ? "haber remunerativo" : "haber no remunerativo") : "descuento"))</label>
+                                <input name="ov_@k.Id" type="number" step="0.01" min="0" readonly="@Model.Cerrada" value="@ovTxt" />
+                            </div>
+                        }
+                        @if (!Model.Cerrada) { <button class="btn-primary" type="submit">Guardar importes</button> }
+                    </form>
+                }
             </div>
         </div>
     </div>

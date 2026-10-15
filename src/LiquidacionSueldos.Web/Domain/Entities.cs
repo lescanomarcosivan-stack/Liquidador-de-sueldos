@@ -24,6 +24,8 @@ public class Estudio
     public DateTime CreadoEn { get; set; } = DateTime.UtcNow;
     /// <summary>Código del plan comercial (ver <see cref="Planes"/>). Los estudios nuevos arrancan en Prueba.</summary>
     [Required, MaxLength(20)] public string Plan { get; set; } = Planes.Prueba;
+    /// <summary>Fin del período de prueba (UTC). Solo aplica al plan Prueba; si es null se toma el alta + 30 días.</summary>
+    public DateTime? PruebaVence { get; set; }
 }
 
 public class ApplicationUser : IdentityUser

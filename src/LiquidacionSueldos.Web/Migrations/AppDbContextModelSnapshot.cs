@@ -474,6 +474,9 @@ namespace LiquidacionSueldos.Web.Migrations
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("Ilimitado");
 
+                    b.Property<DateTime?>("PruebaVence")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.ToTable("Estudios");

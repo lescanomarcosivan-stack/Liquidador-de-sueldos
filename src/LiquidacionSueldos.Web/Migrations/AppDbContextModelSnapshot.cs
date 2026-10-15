@@ -185,6 +185,9 @@ namespace LiquidacionSueldos.Web.Migrations
                     b.Property<Guid>("EstudioId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("Manual")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -361,6 +364,13 @@ namespace LiquidacionSueldos.Web.Migrations
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
+
+                    b.Property<decimal?>("ObraSocialPorcentaje")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<bool>("ObraSocialSobreNoRem")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Observaciones")
                         .IsRequired()
@@ -542,6 +552,9 @@ namespace LiquidacionSueldos.Web.Migrations
                     b.Property<decimal>("Ausencias")
                         .HasPrecision(18, 6)
                         .HasColumnType("numeric(18,6)");
+
+                    b.Property<string>("ConceptosAgregadosJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("ConceptosJson")
                         .HasColumnType("jsonb");

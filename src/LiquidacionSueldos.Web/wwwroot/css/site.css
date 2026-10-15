@@ -678,7 +678,7 @@ body.public{display:block;}
 @media print{
   html,body{height:auto;}
   body{background:#fff!important;display:block!important;min-height:0!important;}
-  .sidebar,.no-print{display:none!important;}
+  .sidebar,.topbar,.no-print{display:none!important;}
   main{overflow:visible!important;height:auto!important;padding:0!important;flex:none!important;}
   .view,.view.active{display:block!important;max-width:none!important;}
 
@@ -740,3 +740,54 @@ a.btn-primary,a.btn-secondary,a.btn-small{display:inline-block;text-decoration:n
 .resumen-table tr.resumen-sub td{font-weight:700;border-top:1px solid #c9d0dc;}
 .resumen-table tr.resumen-tot td{font-weight:800;background:#12233f;color:#fff;}
 @media print{ .resumen-table tr.resumen-sec td,.resumen-table tr.resumen-tot td{-webkit-print-color-adjust:exact;print-color-adjust:exact;} }
+
+
+/* ======================================================================
+   Barra superior (reemplaza al menú lateral)
+   ====================================================================== */
+body{flex-direction:column;}
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:var(--navy);color:#dbe4f5;
+  box-shadow:0 2px 10px rgba(18,35,63,.25);
+}
+.topbar-main{
+  display:flex;align-items:center;justify-content:space-between;gap:16px 24px;flex-wrap:wrap;
+  padding:12px 28px 8px;
+}
+.topbar .brand{padding:0;margin:0;border:0;}
+.topbar .brand-title{font-size:17px;}
+.topbar-tools{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;}
+.topbar .empresa-selector-box{
+  display:flex;align-items:center;gap:8px;margin:0;padding:0;border:0;
+}
+.topbar .empresa-selector-box label{margin:0;font-size:10px;white-space:nowrap;}
+.topbar .empresa-selector-box select{width:240px;max-width:100%;}
+.topbar .topbar-new{margin:0;text-align:center;text-decoration:none;white-space:nowrap;}
+.topbar-user{display:flex;align-items:center;gap:8px;}
+.topbar .sidebar-user-box{margin:0;padding:5px 10px;}
+.topbar .sidebar-logout{width:auto;white-space:nowrap;}
+.topbar form{margin:0;}
+
+.topnav{
+  display:flex;flex-direction:row;flex-wrap:wrap;gap:2px;
+  padding:0 20px 8px;
+  border-top:1px solid rgba(255,255,255,0.10);
+  padding-top:8px;
+}
+.topnav .nav-btn{padding:8px 12px;font-size:13px;white-space:nowrap;}
+.topnav .nav-btn .num{display:none;}
+.topnav .nav-btn.active{background:var(--slate);}
+
+main{padding:28px 32px;overflow:visible;}
+
+@media(max-width:900px){
+  .topbar{position:static;}
+  .topbar-main{padding:10px 14px 6px;}
+  .topbar .empresa-selector-box select{width:100%;}
+  .topbar .empresa-selector-box{flex:1 1 100%;}
+  .topbar-tools{width:100%;}
+  /* En pantallas angostas el menú se desliza horizontalmente en una sola fila. */
+  .topnav{flex-wrap:nowrap;overflow-x:auto;padding:8px 10px;-webkit-overflow-scrolling:touch;}
+  main{padding:20px 14px;}
+}

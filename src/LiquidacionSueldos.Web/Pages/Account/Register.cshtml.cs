@@ -33,7 +33,7 @@ public class RegisterModel(AppDbContext db, UserManager<ApplicationUser> users, 
             return Page();
         }
 
-        var estudio = new Estudio { Nombre = Input.Estudio.Trim(), Plan = Planes.Prueba };
+        var estudio = new Estudio { Nombre = Input.Estudio.Trim(), Plan = Planes.Prueba, PruebaVence = DateTime.UtcNow.AddDays(Planes.DiasPrueba) };
         var user = new ApplicationUser
         {
             UserName = email, Email = email, EmailConfirmed = true,

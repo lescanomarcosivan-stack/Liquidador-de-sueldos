@@ -6,13 +6,30 @@ namespace LiquidacionSueldos.Web.Services;
 
 public record UsoPlan(PlanInfo Plan, int Empresas, int Empleados, int Usuarios);
 
-/// <summary>Consulta el plan del estudio actual y controla que no se superen sus límites.</summary>
+/// <summary>Consulta el plan y la prueba gratuita del estudio actual y controla que no se superen sus límites.</summary>
 public class PlanService(AppDbContext db, ITenantContext tenant)
 {
-    public async Task<PlanInfo> PlanActualAsync()
+    // El servicio vive una sola solicitud: se lee el estudio una vez y se reutiliza (menú, filtro, página).
+    private Estudio? _estudio;
+    private bool _cargado;
+
+    private async Task<Estudio?> EstudioAsync()
     {
-        var codigo = await db.Estudios.Where(e => e.Id == tenant.EstudioId).Select(e => e.Plan).FirstOrDefaultAsync();
-        return Planes.Obtener(codigo);
+        if (!_cargado)
+        {
+            _estudio = await db.Estudios.AsNoTracking().FirstOrDefaultAsync(e => e.Id == tenant.EstudioId);
+            _cargado = true;
+        }
+        return _estudio;
+    }
+
+    public async Task<PlanInfo> PlanActualAsync() => Planes.Obtener((await EstudioAsync())?.Plan);
+
+    /// <summary>Estado de la prueba gratuita (NoAplica si el estudio tiene otro plan o no hay sesión).</summary>
+    public async Task<EstadoPrueba> PruebaAsync()
+    {
+        var e = await EstudioAsync();
+        return e == null ? EstadoPrueba.NoAplica : Planes.CalcularPrueba(e.Plan, e.CreadoEn, e.PruebaVence, DateTime.UtcNow);
     }
 
     public async Task<UsoPlan> UsoAsync()
@@ -26,9 +43,11 @@ public class PlanService(AppDbContext db, ITenantContext tenant)
             await db.Users.CountAsync(u => u.EstudioId == estudioId && u.Activo));
     }
 
-    /// <summary>Devuelve el mensaje de error si agregar un recurso más supera el plan; null si se puede.</summary>
+    /// <summary>Devuelve el mensaje de error si agregar un recurso más no corresponde (prueba vencida o tope del plan); null si se puede.</summary>
     public async Task<string?> ValidarAltaAsync(Recurso recurso)
     {
+        if ((await PruebaAsync()).Vencida) return Planes.MensajePruebaVencida;
+
         var plan = await PlanActualAsync();
         if (plan.Max(recurso) == int.MaxValue) return null;
         var estudioId = tenant.EstudioId;

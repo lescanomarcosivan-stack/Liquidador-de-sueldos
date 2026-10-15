@@ -20,31 +20,42 @@
     @await RenderSectionAsync("Head", required: false)
 </head>
 <body class="@bodyClass">
-<aside class="sidebar">
-    <div class="brand">
-        <div class="brand-title">Liquidación de Sueldos</div>
-        <div class="brand-sub">Estudio contable</div>
+<header class="topbar">
+    <div class="topbar-main">
+        <div class="brand">
+            <div class="brand-title">Liquidación de Sueldos</div>
+            <div class="brand-sub">Estudio contable</div>
+        </div>
+        <div class="topbar-tools">
+            <form method="post" asp-page="/CambiarEmpresa" class="empresa-selector-box">
+                <label for="selector-empresa">Empresa</label>
+                <select id="selector-empresa" name="id" onchange="this.form.submit()">
+                    @if (empresas.Count == 0)
+                    {
+                        <option value="">— sin empresas —</option>
+                    }
+                    @foreach (var e in empresas)
+                    {
+                        <option value="@e.Id" selected="@(e.Id == activa)">@e.RazonSocial</option>
+                    }
+                </select>
+            </form>
+            @if (Tenant.IsAdmin)
+            {
+                <a class="sidebar-btn topbar-new" asp-page="/Empresas/Index">+ Nueva empresa</a>
+            }
+            <div class="topbar-user">
+                <div class="sidebar-user-box">
+                    <div class="sidebar-user-name">@Tenant.DisplayName</div>
+                    <div class="sidebar-user-rol">@(Tenant.IsAdmin ? "Administrador" : "Operador")</div>
+                </div>
+                <form method="post" asp-page="/Account/Logout">
+                    <button type="submit" class="sidebar-btn sidebar-logout">⏻ Salir</button>
+                </form>
+            </div>
+        </div>
     </div>
-    <div class="empresa-selector-box">
-        <form method="post" asp-page="/CambiarEmpresa">
-            <label for="selector-empresa">Empresa</label>
-            <select id="selector-empresa" name="id" onchange="this.form.submit()">
-                @if (empresas.Count == 0)
-                {
-                    <option value="">— sin empresas —</option>
-                }
-                @foreach (var e in empresas)
-                {
-                    <option value="@e.Id" selected="@(e.Id == activa)">@e.RazonSocial</option>
-                }
-            </select>
-        </form>
-        @if (Tenant.IsAdmin)
-        {
-            <a class="sidebar-btn" style="display:block;margin-top:6px;text-align:center;text-decoration:none;" asp-page="/Empresas/Index">+ Nueva empresa</a>
-        }
-    </div>
-    <nav>
+    <nav class="topnav" aria-label="Menú principal">
         <a class="nav-btn @Act("")" asp-page="/Index"><span class="num">0</span> Inicio</a>
         @if (Tenant.IsAdmin)
         {
@@ -68,16 +79,7 @@
         }
         <a class="nav-btn @Act("guia")" asp-page="/Guia/Index"><span class="num">?</span> Guía de estudio</a>
     </nav>
-    <div class="sidebar-foot">
-        <div class="sidebar-user-box">
-            <div class="sidebar-user-name">@Tenant.DisplayName</div>
-            <div class="sidebar-user-rol">@(Tenant.IsAdmin ? "Administrador" : "Operador")</div>
-        </div>
-        <form method="post" asp-page="/Account/Logout">
-            <button type="submit" class="sidebar-btn sidebar-logout">⏻ Cerrar sesión</button>
-        </form>
-    </div>
-</aside>
+</header>
 <main>
     @RenderBody()
 </main>

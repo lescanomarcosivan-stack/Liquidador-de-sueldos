@@ -4,13 +4,13 @@
 <section class="view active">
     <div class="view-head">
         <h1>Conceptos adicionales</h1>
-        <p>Haberes y descuentos configurables que se aplican en cada liquidación. Si el valor es 0 el concepto no aparece en el recibo, salvo que lo cargues manualmente para un empleado.</p>
+        <p>Haberes y descuentos configurables. Pueden aplicarse a todos los empleados o agregarse a elección, empleado por empleado, desde el detalle de la liquidación (con la base de cálculo que quieras). Si el valor es 0 el concepto no aparece en el recibo, salvo que lo cargues manualmente para un empleado.</p>
     </div>
     <partial name="_Alert" model="(Model.Ok, Model.Error)" />
 
     <div class="panel">
         <table class="table-simple">
-            <thead><tr><th>Nombre</th><th>Tipo</th><th>Remunerativo</th><th>Cálculo</th><th class="money">Valor</th><th></th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Tipo</th><th>Remunerativo</th><th>Cálculo</th><th>Se aplica</th><th class="money">Valor</th><th></th></tr></thead>
             <tbody>
             @foreach (var c in Model.Lista)
             {
@@ -18,7 +18,8 @@
                     <td>@c.Nombre</td>
                     <td><span class="badge @(c.Tipo == "haber" ? "" : "warn")">@(c.Tipo == "haber" ? "Haber" : "Descuento")</span></td>
                     <td>@(c.Tipo == "haber" ? (c.Remunerativo ? "Sí" : "No") : "—")</td>
-                    <td>@(c.Calculo switch { "pctBasico" => "% del básico", "pctHaberes" => "% de haberes", _ => "Importe fijo" })</td>
+                    <td>@(c.Calculo switch { "pctBasico" => "% del básico", "pctHaberes" => "% de haberes", "pctRemunerativo" => "% del total remunerativo", "pctNoRemunerativo" => "% del total no remunerativo", "pctBruto" => "% del bruto (rem. + no rem.)", _ => "Importe fijo" })</td>
+                    <td>@(c.Manual ? "A elección, por empleado" : "A todos")</td>
                     <td class="money">@(c.Calculo == "fijo" ? Fmt.Money(c.Valor) : Fmt.Pct(c.Valor))</td>
                     <td style="text-align:right;white-space:nowrap;">
                         <a class="btn-small" asp-page="Index" asp-route-id="@c.Id">Editar</a>
@@ -28,7 +29,7 @@
                     </td>
                 </tr>
             }
-            @if (Model.Lista.Count == 0) { <tr><td colspan="6" class="hint">No hay conceptos.</td></tr> }
+            @if (Model.Lista.Count == 0) { <tr><td colspan="7" class="hint">No hay conceptos.</td></tr> }
             </tbody>
         </table>
     </div>
@@ -48,7 +49,12 @@
                         <option value="fijo">Importe fijo ($)</option>
                         <option value="pctBasico">% del básico</option>
                         <option value="pctHaberes">% de haberes (básico + antigüedad + presentismo + HE)</option>
+                        <option value="pctRemunerativo">% del total remunerativo (solo descuentos)</option>
+                        <option value="pctNoRemunerativo">% del total no remunerativo (solo descuentos)</option>
+                        <option value="pctBruto">% del bruto: remunerativo + no remunerativo (solo descuentos)</option>
                     </select></div>
+                <div class="field"><label>Se aplica</label>
+                    <select asp-for="Input.Manual"><option value="false">A todos los empleados automáticamente</option><option value="true">A elección: lo agrego empleado por empleado</option></select></div>
                 <div class="field"><label>Valor ($ o %)</label><input asp-for="Input.Valor" type="number" step="any" min="0" /></div>
             </div>
             <div class="page-actions" style="margin-top:14px;">

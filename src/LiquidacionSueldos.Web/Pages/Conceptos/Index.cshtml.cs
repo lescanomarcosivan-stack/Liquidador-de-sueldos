@@ -17,6 +17,8 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
         public string Tipo { get; set; } = "haber";
         public bool Remunerativo { get; set; } = true;
         public string Calculo { get; set; } = "fijo";
+        /// <summary>true = no se aplica solo: se agrega empleado por empleado en la liquidación.</summary>
+        public bool Manual { get; set; }
         /// <summary>Importe ($) si es fijo; porcentaje (5 = 5 %) en los demás casos.</summary>
         public decimal Valor { get; set; }
     }
@@ -34,7 +36,7 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
         if (c != null)
             Input = new ConceptoInput
             {
-                Id = c.Id, Nombre = c.Nombre, Tipo = c.Tipo, Remunerativo = c.Remunerativo, Calculo = c.Calculo,
+                Id = c.Id, Nombre = c.Nombre, Tipo = c.Tipo, Remunerativo = c.Remunerativo, Calculo = c.Calculo, Manual = c.Manual,
                 Valor = Fmt.Limpio(c.Calculo == "fijo" ? c.Valor : c.Valor * 100m)
             };
         return Page();
@@ -46,7 +48,12 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
         if (!ModelState.IsValid) { Error = "Ingresá el nombre del concepto."; return RedirectToPage(); }
 
         var tipo = Input.Tipo == "descuento" ? "descuento" : "haber";
-        var calculo = Input.Calculo is "pctBasico" or "pctHaberes" ? Input.Calculo : "fijo";
+        var calculo = Input.Calculo is "pctBasico" or "pctHaberes" or "pctRemunerativo" or "pctNoRemunerativo" or "pctBruto" ? Input.Calculo : "fijo";
+        if (tipo == "haber" && calculo is "pctRemunerativo" or "pctNoRemunerativo" or "pctBruto")
+        {
+            Error = "No se guardó: calcular sobre el total remunerativo, no remunerativo o el bruto solo es posible en descuentos (un haber no puede depender de sí mismo).";
+            return RedirectToPage();
+        }
         var valor = Math.Max(0m, Input.Valor);
         if (calculo != "fijo") valor = Math.Min(valor, 1000m) / 100m;
 
@@ -63,6 +70,7 @@ public class IndexModel(AppDbContext db, ITenantContext tenant, IAuditoria audit
         c.Tipo = tipo;
         c.Remunerativo = tipo == "haber" && Input.Remunerativo;
         c.Calculo = calculo;
+        c.Manual = Input.Manual;
         c.Valor = Math.Round(valor, 6);
 
         audit.Registrar(nuevo ? "concepto_creado" : "concepto_editado", $"{(nuevo ? "Creó" : "Editó")} el concepto {c.Nombre}");

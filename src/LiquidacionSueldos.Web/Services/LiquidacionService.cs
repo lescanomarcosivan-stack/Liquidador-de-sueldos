@@ -34,8 +34,16 @@ public class LiquidacionService(AppDbContext db, ITenantContext tenant, IAuditor
         return lista.Select(c => new ConceptoCalc
         {
             Id = c.Id.ToString(), Nombre = c.Nombre, Tipo = c.Tipo, Remunerativo = c.Remunerativo,
-            Calculo = c.Calculo, Valor = c.Valor
+            Calculo = c.Calculo, Valor = c.Valor, Manual = c.Manual
         }).ToList();
+    }
+
+    /// <summary>Conceptos agregados a mano a la línea (lista vacía si no hay o el JSON es inválido).</summary>
+    public static List<AgregadoCalc> AgregadosDe(LiquidacionLinea l)
+    {
+        if (string.IsNullOrWhiteSpace(l.ConceptosAgregadosJson)) return new();
+        try { return JsonSerializer.Deserialize<List<AgregadoCalc>>(l.ConceptosAgregadosJson, Json) ?? new(); }
+        catch (JsonException) { return new(); }
     }
 
     public static NovedadesCalc Novedades(LiquidacionLinea l)
@@ -50,13 +58,14 @@ public class LiquidacionService(AppDbContext db, ITenantContext tenant, IAuditor
             try { n.Overrides = JsonSerializer.Deserialize<Dictionary<string, decimal>>(l.ConceptosJson, Json) ?? new(); }
             catch (JsonException) { n.Overrides = new(); }
         }
+        foreach (var a in AgregadosDe(l)) n.Agregados[a.Id] = a;
         return n;
     }
 
     /// <summary>Cálculo en vivo con los datos actuales (el empleado debe traer Convenio y Categoria cargados).</summary>
     public static ResultadoCalculo CalcularLive(Empleado e, LiquidacionLinea l, string periodo, IEnumerable<ConceptoCalc> conceptos) =>
         CalculoSueldos.Calcular(e.BasicoEfectivo, e.FechaIngreso, periodo, e.AfiliadoSindicato,
-            ParametrosConvenio.Desde(e.Convenio), conceptos, Novedades(l));
+            ParametrosConvenio.Desde(e.Convenio), conceptos, Novedades(l), e.ObraSocialSobreNoRem, e.ObraSocialPorcentaje);
 
     public static SnapshotLinea? LeerSnapshot(LiquidacionLinea l)
     {
@@ -273,7 +282,8 @@ public class LiquidacionService(AppDbContext db, ITenantContext tenant, IAuditor
             {
                 EstudioId = tenant.EstudioId, EmpleadoId = l.EmpleadoId, Seleccionado = l.Seleccionado,
                 Dias = l.Dias, Ausencias = l.Ausencias, He50 = l.He50, He100 = l.He100,
-                OtrosDescuentos = l.OtrosDescuentos, NoRemunerativo = l.NoRemunerativo, ConceptosJson = l.ConceptosJson
+                OtrosDescuentos = l.OtrosDescuentos, NoRemunerativo = l.NoRemunerativo, ConceptosJson = l.ConceptosJson,
+                ConceptosAgregadosJson = l.ConceptosAgregadosJson
             });
         }
         db.Liquidaciones.Add(nueva);

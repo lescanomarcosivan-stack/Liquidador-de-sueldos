@@ -104,8 +104,10 @@ public class Concepto : IEstudioOwned
     /// <summary>"haber" o "descuento".</summary>
     [MaxLength(20)] public string Tipo { get; set; } = "haber";
     public bool Remunerativo { get; set; } = true;
-    /// <summary>"fijo", "pctBasico" o "pctHaberes".</summary>
+    /// <summary>"fijo", "pctBasico", "pctHaberes", "pctRemunerativo", "pctNoRemunerativo" o "pctBruto" (las tres últimas, solo para descuentos).</summary>
     [MaxLength(20)] public string Calculo { get; set; } = "fijo";
+    /// <summary>false = se aplica automáticamente a todos los empleados; true = no se aplica a nadie hasta agregarlo empleado por empleado en la liquidación.</summary>
+    public bool Manual { get; set; }
     /// <summary>Importe (fijo) o fracción (porcentajes).</summary>
     public decimal Valor { get; set; }
 }
@@ -139,6 +141,10 @@ public class Empleado : IEstudioOwned
     public decimal Basico { get; set; }
     [MaxLength(150)] public string ObraSocial { get; set; } = "";
     public bool AfiliadoSindicato { get; set; } = true;
+    /// <summary>true = el aporte de obra social se calcula sobre remunerativo + no remunerativo (ej.: OSECAC en Comercio).</summary>
+    public bool ObraSocialSobreNoRem { get; set; }
+    /// <summary>Fracción (0,06 = 6 %) que reemplaza el porcentaje de obra social del convenio; null = usar el del convenio (ej.: media jornada).</summary>
+    public decimal? ObraSocialPorcentaje { get; set; }
     [MaxLength(150)] public string Banco { get; set; } = "";
     [MaxLength(1000)] public string Observaciones { get; set; } = "";
     public bool Activo { get; set; } = true;
@@ -187,6 +193,8 @@ public class LiquidacionLinea : IEstudioOwned
     public decimal NoRemunerativo { get; set; }
     /// <summary>JSON: { "idConcepto": importe }. Sobrescribe el valor automático de un concepto para este empleado.</summary>
     public string? ConceptosJson { get; set; }
+    /// <summary>JSON: lista de { Id, Calculo, Valor } con los conceptos agregados a mano a este empleado en esta liquidación.</summary>
+    public string? ConceptosAgregadosJson { get; set; }
     /// <summary>JSON con la foto congelada al cerrar la liquidación.</summary>
     public string? SnapshotJson { get; set; }
 }

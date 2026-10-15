@@ -1,0 +1,27 @@
+@page
+@model PruebaVencidaModel
+@{ ViewData["Title"] = "Prueba vencida"; }
+<section class="view active">
+    <div class="view-head">
+        <h1>Tu período de prueba terminó</h1>
+        <p>Pasaron los 30 días de prueba gratuita.</p>
+    </div>
+    <div class="panel liq-panel">
+        <p>@Planes.MensajePruebaVencida</p>
+        <p><strong>Para contratar un plan, contactame:</strong></p>
+        @if (!string.IsNullOrWhiteSpace(Model.Telefono) || !string.IsNullOrWhiteSpace(Model.Email))
+        {
+            <p>
+                @if (!string.IsNullOrWhiteSpace(Model.Telefono)) { <span>📞 @Model.Telefono</span><br /> }
+                @if (!string.IsNullOrWhiteSpace(Model.Email)) { <span>✉ <a href="mailto:@Model.Email">@Model.Email</a></span> }
+            </p>
+        }
+        else
+        {
+            <p class="hint">Comunicate con quien te dio acceso al sistema.</p>
+        }
+        <div class="page-actions" style="margin-top:12px;">
+            <a class="btn-secondary" asp-page="/Index">Volver al inicio (solo lectura)</a>
+        </div>
+    </div>
+</section>

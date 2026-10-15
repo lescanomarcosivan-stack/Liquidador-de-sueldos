@@ -791,3 +791,14 @@ main{padding:28px 32px;overflow:visible;}
   .topnav{flex-wrap:nowrap;overflow-x:auto;padding:8px 10px;-webkit-overflow-scrolling:touch;}
   main{padding:20px 14px;}
 }
+
+/* Franja de prueba gratuita (debajo de la barra superior) */
+.trial-strip{
+  background:#fdf7ea;border-bottom:1px solid #e9d9a8;color:var(--amber);
+  font-size:12.5px;padding:7px 28px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;
+}
+.trial-strip a{color:var(--amber);font-weight:700;}
+.trial-strip.vencida{background:#fbe9e9;border-bottom-color:#e3b3b3;color:var(--red);}
+.trial-strip.vencida a{color:var(--red);}
+@media print{.trial-strip{display:none!important;}}
+@media(max-width:900px){.trial-strip{padding:7px 14px;}}

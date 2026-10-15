@@ -62,6 +62,10 @@
                 <div class="field"><label>Banco / CBU</label><input asp-for="Input.Banco" maxlength="150" /></div>
                 <div class="field"><label>Afiliado al sindicato</label>
                     <select asp-for="Input.AfiliadoSindicato"><option value="true">Sí</option><option value="false">No</option></select></div>
+                <div class="field"><label>Aporte de obra social sobre no remunerativo</label>
+                    <select asp-for="Input.ObraSocialSobreNoRem"><option value="false">No (solo sobre remunerativo)</option><option value="true">Sí (remunerativo + no remunerativo, ej. OSECAC)</option></select></div>
+                <div class="field"><label>% de obra social propio (vacío = el del convenio)</label>
+                    <input asp-for="Input.ObraSocialPorcentaje" type="number" step="any" min="0" max="100" placeholder="Ej.: 6 para media jornada" /></div>
                 <div class="field"><label>Estado</label>
                     <select asp-for="Input.Activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
                 <div class="field full"><label>Observaciones</label><textarea asp-for="Input.Observaciones" rows="2" maxlength="1000"></textarea></div>

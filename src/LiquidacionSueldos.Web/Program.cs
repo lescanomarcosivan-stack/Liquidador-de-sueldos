@@ -72,6 +72,7 @@ builder.Services.AddRazorPages(o =>
 .AddMvcOptions(o =>
 {
     o.Filters.Add<EmpresaRequeridaFilter>();
+    o.Filters.Add<PruebaVencidaFilter>();
     // Mensajes de validación de números/valores en español (por defecto salen en inglés).
     var m = o.ModelBindingMessageProvider;
     m.SetValueMustBeANumberAccessor(campo => $"El campo {campo} debe ser un número.");

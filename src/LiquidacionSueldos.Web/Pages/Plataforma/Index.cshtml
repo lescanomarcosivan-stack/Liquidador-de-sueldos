@@ -10,7 +10,7 @@
 
     <div class="panel">
         <table class="table-simple">
-            <thead><tr><th>Estudio</th><th>Alta</th><th class="money">Empresas</th><th class="money">Empleados</th><th class="money">Usuarios</th><th>Plan</th></tr></thead>
+            <thead><tr><th>Estudio</th><th>Alta</th><th class="money">Empresas</th><th class="money">Empleados</th><th class="money">Usuarios</th><th>Plan</th><th>Prueba</th></tr></thead>
             <tbody>
             @foreach (var e in Model.Estudios)
             {
@@ -32,9 +32,20 @@
                             <button class="btn-small" type="submit">Guardar</button>
                         </form>
                     </td>
+                    <td>
+                        @if (e.Prueba.EnPrueba)
+                        {
+                            <span class="@(e.Prueba.Vencida ? "badge warn" : "")">@(e.Prueba.Vencida ? "Vencida" : $"{e.Prueba.DiasRestantes} d")</span>
+                            <span class="hint">@Fmt.FechaHora(e.Prueba.Vence!.Value)</span>
+                            <form method="post" asp-page-handler="Extender" asp-route-id="@e.Id" class="inline-form">
+                                <button class="btn-small" type="submit">+30 días</button>
+                            </form>
+                        }
+                        else { <span class="hint">—</span> }
+                    </td>
                 </tr>
             }
-            @if (Model.Estudios.Count == 0) { <tr><td colspan="6" class="hint">Todavía no hay estudios.</td></tr> }
+            @if (Model.Estudios.Count == 0) { <tr><td colspan="7" class="hint">Todavía no hay estudios.</td></tr> }
             </tbody>
         </table>
         <p class="hint">Los topes de cada plan están definidos en el código (Domain/Planes.cs). Las empresas cuentan todas; empleados y usuarios, solo los activos.</p>
